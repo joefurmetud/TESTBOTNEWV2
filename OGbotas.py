@@ -2424,7 +2424,7 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
             "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
             "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
             "💡 Pridėkite įrodymus po vartotojo vardo!\n"
-            "🔍 Galite pridėti user ID: `/scameris @username 123456789 įrodymai`"
+            "🤖 Botas automatiškai bandys rasti user ID"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
@@ -2443,6 +2443,18 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
     if len(proof_args) >= 1 and proof_args[0].isdigit():
         reported_user_id = int(proof_args[0])
         proof_args = proof_args[1:]  # Remove user ID from proof arguments
+    
+    # If no user ID provided, try to get it automatically from username
+    if not reported_user_id:
+        try:
+            # Remove @ symbol for API call
+            clean_username = reported_username.replace('@', '')
+            user_info = await context.bot.get_chat(f"@{clean_username}")
+            reported_user_id = user_info.id
+            logger.info(f"Auto-detected user ID {reported_user_id} for username {reported_username}")
+        except Exception as e:
+            logger.warning(f"Could not auto-detect user ID for {reported_username}: {e}")
+            # Continue without user ID - not critical
     
     proof = sanitize_text_input(" ".join(proof_args), max_length=500)
     if not proof or len(proof.strip()) < 10:
@@ -2481,11 +2493,13 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         # Track that user made a report today (for daily limit counting)
         
         # Create message with inline buttons
+        user_id_info = f"User ID: {reported_user_id}" if reported_user_id else "User ID: Nerastas"
         admin_message = (
             f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
             f"Report ID: #{scammer_report_id}\n"
             f"Pranešė: {reporter_username or f'User {user_id}'}\n"
             f"Apie: {reported_username}\n"
+            f"{user_id_info}\n"
             f"Įrodymai: {proof}\n"
             f"Laikas: {now.strftime('%Y-%m-%d %H:%M')}\n\n"
             f"Spustelėkite mygtukus žemiau:"
