@@ -890,7 +890,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
     confirmation_text += f"⏰ **Kitas balsavimas:**\n"
     confirmation_text += f"📅 {next_vote_formatted} (po 7 dienų)\n\n"
     confirmation_text += f"🎯 Ačiū už dalyvavimą balsavime!\n"
-    confirmation_text += f"⚠️ Ši žinutė bus ištrinta po 2 minučių"
+    confirmation_text += f"⚠️ Ši žinutė bus ištrinta po 35 sekundžių"
     
     try:
         confirmation_msg = await context.bot.send_message(
@@ -907,8 +907,8 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
             text=fallback_text
         )
     
-    # Delete confirmation message after 2 minutes (120 seconds)
-    context.job_queue.run_once(delete_message_job, 120, data=(VOTING_GROUP_CHAT_ID, confirmation_msg.message_id))
+    # Delete confirmation message after 35 seconds
+    context.job_queue.run_once(delete_message_job, 35, data=(VOTING_GROUP_CHAT_ID, confirmation_msg.message_id))
 
 async def updatevoting(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
