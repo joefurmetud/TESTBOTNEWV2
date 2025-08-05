@@ -2592,10 +2592,12 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         scammer_info = confirmed_scammers[check_username.lower()]
         confirmed_date = scammer_info['timestamp'].strftime('%Y-%m-%d')
         reports_count = scammer_info.get('reports_count', 1)
+        user_id_info = f"User ID: {scammer_info.get('user_id', 'Nenurodyta')}"
         
         msg = await update.message.reply_text(
                     f"🚨 SCAMER RASTAS! 🚨\n\n"
         f"Vartotojas: {check_username}\n"
+        f"{user_id_info}\n"
         f"Statusas: ❌ Patvirtintas scameris\n"
         f"Patvirtinta: {confirmed_date}\n"
         f"Pranešimų: {reports_count}\n"
