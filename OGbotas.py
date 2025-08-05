@@ -880,7 +880,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
     alltime_votes = votes_alltime.get(seller, 0)
     
     # Send short confirmation message
-    confirmation_text = f"🗳️ {voter_username} balsavo už **{seller_name}** (+5 tšk)\n"
+    confirmation_text = f"🗳️ {voter_username} balsavo už {seller_name} (+5 tšk)\n"
     confirmation_text += f"📊 Savaitė: {weekly_votes} | Viso: {alltime_votes}\n"
     confirmation_text += f"⏰ Kitas balsas: {next_vote_formatted}"
     
@@ -1433,7 +1433,7 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
     now = datetime.now(TIMEZONE)
     
     # Create mobile-friendly header
-    header = "🏆 **PARDAVĖJŲ REITINGAI** 🏆\n"
+    header = "🏆 PARDAVĖJŲ REITINGAI 🏆\n"
     header += f"📅 {now.strftime('%Y-%m-%d %H:%M')}\n\n"
     
     # Add custom admin message if exists
@@ -1441,7 +1441,7 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         header += f"📢 {last_addftbaryga2_message}\n\n"
     
     # Build mobile-friendly Weekly Leaderboard
-    weekly_board = "🔥 **SAVAITĖS ČEMPIONAI** 🔥\n"
+            weekly_board = "🔥 SAVAITĖS ČEMPIONAI 🔥\n"
     weekly_board += f"📊 {now.strftime('%V savaitė')}\n\n"
     
     if not votes_weekly:
@@ -1466,12 +1466,12 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
             # Format vendor name (remove @)
             vendor_name = vendor[1:] if vendor.startswith('@') else vendor
             
-            weekly_board += f"{icon} **{i}. {vendor_name}** — {score} balsų\n"
+            weekly_board += f"{icon} {i}. {vendor_name} — {score} balsų\n"
     
     weekly_board += "\n" + "─" * 25 + "\n\n"
     
     # Build Monthly Leaderboard
-    monthly_board = "🗓️ **MĖNESIO LYDERIAI** 🗓️\n"
+    monthly_board = "🗓️ MĖNESIO LYDERIAI 🗓️\n"
     monthly_board += f"📊 {now.strftime('%B %Y')}\n\n"
     
     # Calculate current calendar month totals
@@ -1499,12 +1499,12 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
                 icon = "🌟"
             
             vendor_name = vendor[1:] if vendor.startswith('@') else vendor
-            monthly_board += f"{icon} **{i}. {vendor_name}** — {score} balsų\n"
+            monthly_board += f"{icon} {i}. {vendor_name} — {score} balsų\n"
     
     monthly_board += "\n" + "─" * 25 + "\n\n"
     
     # Build All-Time Hall of Fame
-    alltime_board = "🌟 **VISŲ LAIKŲ LEGENDOS** 🌟\n"
+    alltime_board = "🌟 VISŲ LAIKŲ LEGENDOS 🌟\n"
     alltime_board += "📈 Istoriniai rekordai\n\n"
     
     if not votes_alltime:
@@ -1529,27 +1529,27 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
                 icon = "🔸"
             
             vendor_name = vendor[1:] if vendor.startswith('@') else vendor
-            alltime_board += f"{icon} **{i}. {vendor_name}** — {score} balsų\n"
+            alltime_board += f"{icon} {i}. {vendor_name} — {score} balsų\n"
     
     alltime_board += "\n" + "─" * 25 + "\n\n"
     
     # Add simplified footer
-    footer = "📊 **STATISTIKOS**\n"
+    footer = "📊 STATISTIKOS\n"
     total_weekly_votes = sum(votes_weekly.values())
     total_monthly_votes = sum(monthly_totals.values())
     total_alltime_votes = sum(votes_alltime.values())
     active_sellers = len([v for v in votes_weekly.values() if v > 0])
     
-    footer += f"📈 Savaitės balsų: **{total_weekly_votes}**\n"
-    footer += f"📅 Mėnesio balsų: **{total_monthly_votes}**\n"
-    footer += f"🌟 Visų laikų balsų: **{total_alltime_votes}**\n"
-    footer += f"👥 Aktyvūs pardavėjai: **{active_sellers}**\n\n"
+    footer += f"📈 Savaitės balsų: {total_weekly_votes}\n"
+    footer += f"📅 Mėnesio balsų: {total_monthly_votes}\n"
+    footer += f"🌟 Visų laikų balsų: {total_alltime_votes}\n"
+    footer += f"👥 Aktyvūs pardavėjai: {active_sellers}\n\n"
     
     # Add next reset information
     next_sunday = now + timedelta(days=(6 - now.weekday()))
     next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
     
-    footer += "⏰ **KITAS RESTARTAS**\n"
+    footer += "⏰ KITAS RESTARTAS\n"
     footer += f"• Savaitės: {next_sunday.strftime('%m-%d %H:%M')}\n"
     footer += f"• Mėnesio: {next_month.strftime('%m-%d %H:%M')}\n\n"
     
@@ -1639,7 +1639,7 @@ async def chatking(update: telegram.Update, context: telegram.ext.ContextTypes.D
     
     if not alltime_messages:
         msg = await update.message.reply_text(
-            "👑 **POKALBIŲ LYDERIAI** 👑\n\n"
+            "👑 POKALBIŲ LYDERIAI 👑\n\n"
             "🤐 Dar nėra žinučių istorijoje!\n"
             "Pradėk pokalbį ir tapk pirmuoju!"
         )
@@ -1648,7 +1648,7 @@ async def chatking(update: telegram.Update, context: telegram.ext.ContextTypes.D
     
     # Build beautiful header
     now = datetime.now(TIMEZONE)
-    header = "👑✨ **POKALBIŲ IMPERATORIAI** ✨👑\n"
+    header = "👑✨ POKALBIŲ IMPERATORIAI ✨👑\n"
     header += f"📅 {now.strftime('%Y-%m-%d %H:%M')}\n"
     header += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
@@ -1656,7 +1656,7 @@ async def chatking(update: telegram.Update, context: telegram.ext.ContextTypes.D
     sorted_chatters = sorted(alltime_messages.items(), key=lambda x: x[1], reverse=True)[:15]
     max_messages = sorted_chatters[0][1] if sorted_chatters else 1
     
-    leaderboard = "🏆 **VISŲ LAIKŲ TOP POKALBININKAI** 🏆\n"
+    leaderboard = "🏆 VISŲ LAIKŲ TOP POKALBININKAI 🏆\n"
     leaderboard += "┌───────────────────────────────────────┐\n"
     
     for i, (user_id, msg_count) in enumerate(sorted_chatters, 1):
@@ -1722,7 +1722,7 @@ async def chatking(update: telegram.Update, context: telegram.ext.ContextTypes.D
     leaderboard += "└───────────────────────────────────────┘\n\n"
     
     # Add statistics and achievements info
-    footer = "📊 **GRUPĖS STATISTIKOS**\n"
+    footer = "📊 GRUPĖS STATISTIKOS\n"
     total_messages = sum(alltime_messages.values())
     active_users = len([count for count in alltime_messages.values() if count >= 10])
     super_active = len([count for count in alltime_messages.values() if count >= 1000])
@@ -1732,7 +1732,7 @@ async def chatking(update: telegram.Update, context: telegram.ext.ContextTypes.D
     footer += f"• Super aktyvūs: {super_active} 🔥\n"
     footer += f"• Vidurkis per narį: {total_messages // len(alltime_messages) if alltime_messages else 0} 📈\n\n"
     
-    footer += "🎯 **PASIEKIMŲ LYGIAI**\n"
+    footer += "🎯 PASIEKIMŲ LYGIAI\n"
     footer += "🌱 Pradžia: 1-99 žinučių\n"
     footer += "📈 Naujokas: 100-499 žinučių\n"
     footer += "🌟 Aktyvus: 500-999 žinučių\n"
@@ -2410,9 +2410,9 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
     # Input validation
     if len(context.args) < 2:
         msg = await update.message.reply_text(
-            "📋 **Naudojimas:** `/scameris @username įrodymai`\n\n"
-            "**Pavyzdys:** `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
-            "**Reikia:** Detalūs įrodymai kodėl šis žmogus yra scameris"
+            "📋 Naudojimas: `/scameris @username įrodymai`\n\n"
+            "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
+            "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
@@ -2461,13 +2461,13 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         
         # Send to admin for review
         admin_message = (
-            f"🚨 **NAUJAS SCAMER PRANEŠIMAS** 🚨\n\n"
-            f"**Report ID:** #{scammer_report_id}\n"
-            f"**Pranešė:** {reporter_username or f'User {user_id}'}\n"
-            f"**Apie:** {reported_username}\n"
-            f"**Įrodymai:** {proof}\n"
-            f"**Laikas:** {now.strftime('%Y-%m-%d %H:%M')}\n\n"
-            f"**Veiksmai:**\n"
+                    f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
+        f"Report ID: #{scammer_report_id}\n"
+        f"Pranešė: {reporter_username or f'User {user_id}'}\n"
+        f"Apie: {reported_username}\n"
+        f"Įrodymai: {proof}\n"
+        f"Laikas: {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+        f"Veiksmai:\n"
             f"✅ `/approve_scammer {scammer_report_id}` - Patvirtinti\n"
             f"❌ `/reject_scammer {scammer_report_id}` - Atmesti\n"
             f"📋 `/scammer_details {scammer_report_id}` - Detalės"
@@ -2477,10 +2477,10 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         
         # Confirm to user
         msg = await update.message.reply_text(
-            f"✅ **Pranešimas pateiktas!**\n\n"
-            f"**Report ID:** #{scammer_report_id}\n"
-            f"**Apie:** {reported_username}\n"
-            f"**Statusas:** Laukia admin peržiūros\n\n"
+                    f"✅ Pranešimas pateiktas!\n\n"
+        f"Report ID: #{scammer_report_id}\n"
+        f"Apie: {reported_username}\n"
+        f"Statusas: Laukia admin peržiūros\n\n"
             f"Adminai peržiūrės jūsų pranešimą ir priims sprendimą. Ačiū už saugios bendruomenės kūrimą! 🛡️"
         )
         context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
@@ -2511,8 +2511,8 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
     
     if len(context.args) < 1:
         msg = await update.message.reply_text(
-            "📋 **Naudojimas:** `/patikra @username`\n\n"
-            "**Pavyzdys:** `/patikra @user123`\n"
+                    "📋 Naudojimas: `/patikra @username`\n\n"
+        "Pavyzdys: `/patikra @user123`\n"
             "Patikrinkite ar vartotojas yra scamerių sąraše"
         )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
@@ -2532,22 +2532,22 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         reports_count = scammer_info.get('reports_count', 1)
         
         msg = await update.message.reply_text(
-            f"🚨 **SCAMER RASTAS!** 🚨\n\n"
-            f"**Vartotojas:** {check_username}\n"
-            f"**Statusas:** ❌ Patvirtintas scameris\n"
-            f"**Patvirtinta:** {confirmed_date}\n"
-            f"**Pranešimų:** {reports_count}\n"
-            f"**Įrodymai:** {scammer_info.get('proof', 'Nenurodyta')}\n\n"
-            f"⚠️ **ATSARGIAI!** Šis vartotojas yra žinomas scameris!"
+                    f"🚨 SCAMER RASTAS! 🚨\n\n"
+        f"Vartotojas: {check_username}\n"
+        f"Statusas: ❌ Patvirtintas scameris\n"
+        f"Patvirtinta: {confirmed_date}\n"
+        f"Pranešimų: {reports_count}\n"
+        f"Įrodymai: {scammer_info.get('proof', 'Nenurodyta')}\n\n"
+        f"⚠️ ATSARGIAI! Šis vartotojas yra žinomas scameris!"
         )
         context.job_queue.run_once(delete_message_job, 120, data=(chat_id, msg.message_id))
     elif check_username in trusted_sellers:
         # Check if user is a trusted seller
         msg = await update.message.reply_text(
-            f"✅ **PATIKIMAS PARDAVĖJAS** ✅\n\n"
-            f"**Vartotojas:** {check_username}\n"
-            f"**Statusas:** 🟢 LEGIT\n"
-            f"**Patikimas pardavėjas:** ✅\n\n"
+                    f"✅ PATIKIMAS PARDAVĖJAS ✅\n\n"
+        f"Vartotojas: {check_username}\n"
+        f"Statusas: 🟢 LEGIT\n"
+        f"Patikimas pardavėjas: ✅\n\n"
             f"🎯 Šis vartotojas yra patikimų pardavėjų sąraše!"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
@@ -2558,17 +2558,17 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         
         if pending_count > 0:
             msg = await update.message.reply_text(
-                f"🔍 **PATIKRA ATLIKTA**\n\n"
-                f"**Vartotojas:** {check_username}\n"
-                f"**Statusas:** ⚠️ Yra nepatvirtintų pranešimų ({pending_count})\n"
-                f"**Rekomendacija:** Būkite atsargūs, pranešimai dar tikrinami\n\n"
+                        f"🔍 PATIKRA ATLIKTA\n\n"
+        f"Vartotojas: {check_username}\n"
+        f"Statusas: ⚠️ Yra nepatvirtintų pranešimų ({pending_count})\n"
+        f"Rekomendacija: Būkite atsargūs, pranešimai dar tikrinami\n\n"
                 f"ℹ️ Naudokite pardavėjus iš /barygos komandos"
             )
         else:
             msg = await update.message.reply_text(
-                f"ℹ️ **NĖRA INFORMACIJOS**\n\n"
-                f"**Vartotojas:** {check_username}\n"
-                f"**Statusas:** ❓ Nėra duomenų\n\n"
+                        f"ℹ️ NĖRA INFORMACIJOS\n\n"
+        f"Vartotojas: {check_username}\n"
+        f"Statusas: ❓ Nėra duomenų\n\n"
                 f"🔍 Šis vartotojas nėra scamerių sąraše\n"
                 f"🛡️ Saugumui naudokite pardavėjus iš /barygos"
             )
@@ -2622,7 +2622,7 @@ async def approve_scammer(update: telegram.Update, context: telegram.ext.Context
         try:
             await context.bot.send_message(
                 chat_id=report['chat_id'],
-                text=f"✅ **PRANEŠIMAS PATVIRTINTAS**\n\n"
+                text=f"✅ PRANEŠIMAS PATVIRTINTAS\n\n"
                      f"Jūsų pranešimas apie {report['username']} buvo patvirtintas!\n"
                      f"Vartotojas pridėtas į scamerių sąrašą. Ačiū už bendruomenės saugumą! 🛡️"
             )
@@ -2632,10 +2632,10 @@ async def approve_scammer(update: telegram.Update, context: telegram.ext.Context
             logger.error(f"Unexpected error notifying reporter: {e}")
         
         msg = await update.message.reply_text(
-            f"✅ **SCAMER PATVIRTINTAS**\n\n"
-            f"**Report ID:** #{report_id}\n"
-            f"**Scameris:** {report['username']}\n"
-            f"**Pridėtas į sąrašą:** ✅\n\n"
+                    f"✅ SCAMER PATVIRTINTAS\n\n"
+        f"Report ID: #{report_id}\n"
+        f"Scameris: {report['username']}\n"
+        f"Pridėtas į sąrašą: ✅\n\n"
             f"Vartotojas dabar bus rodomas kaip scameris per /patikra komandą."
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
@@ -2682,7 +2682,7 @@ async def reject_scammer(update: telegram.Update, context: telegram.ext.ContextT
         try:
             await context.bot.send_message(
                 chat_id=report['chat_id'],
-                text=f"❌ **PRANEŠIMAS ATMESTAS**\n\n"
+                text=f"❌ PRANEŠIMAS ATMESTAS\n\n"
                      f"Jūsų pranešimas apie {report['username']} buvo atmestas.\n"
                      f"Įrodymai buvo nepakankant arba neteisingi."
             )
@@ -2692,10 +2692,10 @@ async def reject_scammer(update: telegram.Update, context: telegram.ext.ContextT
             logger.error(f"Unexpected error notifying reporter: {e}")
         
         msg = await update.message.reply_text(
-            f"❌ **PRANEŠIMAS ATMESTAS**\n\n"
-            f"**Report ID:** #{report_id}\n"
-            f"**Apie:** {report['username']}\n"
-            f"**Statusas:** Atmestas"
+                    f"❌ PRANEŠIMAS ATMESTAS\n\n"
+        f"Report ID: #{report_id}\n"
+        f"Apie: {report['username']}\n"
+        f"Statusas: Atmestas"
         )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         
@@ -2724,7 +2724,7 @@ async def scameriai(update: telegram.Update, context: telegram.ext.ContextTypes.
         return
     
     # Create paginated list for mobile-friendly display
-    scammer_text = "🚨 **PATVIRTINTI SCAMERIAI** 🚨\n"
+    scammer_text = "🚨 PATVIRTINTI SCAMERIAI 🚨\n"
     scammer_text += f"📊 Viso: {len(confirmed_scammers)} | Būkite atsargūs!\n\n"
     
     # Sort by most recent first
@@ -2735,7 +2735,7 @@ async def scameriai(update: telegram.Update, context: telegram.ext.ContextTypes.
         date = info['timestamp'].strftime('%m-%d')
         proof_short = info['proof'][:40] + "..." if len(info['proof']) > 40 else info['proof']
         
-        scammer_text += f"🚫 **{i}. @{username}**\n"
+        scammer_text += f"🚫 {i}. @{username}\n"
         scammer_text += f"   📅 {date} | 📝 {proof_short}\n\n"
     
     if len(confirmed_scammers) > 20:
@@ -2762,7 +2762,7 @@ async def scammer_list(update: telegram.Update, context: telegram.ext.ContextTyp
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    scammer_text = "🚨 **ADMIN - PATVIRTINTI SCAMERIAI** 🚨\n\n"
+    scammer_text = "🚨 ADMIN - PATVIRTINTI SCAMERIAI 🚨\n\n"
     
     for i, (username, info) in enumerate(confirmed_scammers.items(), 1):
         date = info['timestamp'].strftime('%Y-%m-%d %H:%M')
@@ -2770,13 +2770,13 @@ async def scammer_list(update: telegram.Update, context: telegram.ext.ContextTyp
         reporter_id = info.get('reporter_id', 'Unknown')
         confirmed_by = info.get('confirmed_by', 'Unknown')
         
-        scammer_text += f"**{i}.** @{username}\n"
+        scammer_text += f"{i}. @{username}\n"
         scammer_text += f"   📅 {date}\n"
         scammer_text += f"   👤 Reporter: {reporter_id}\n"
         scammer_text += f"   ✅ Confirmed by: {confirmed_by}\n"
         scammer_text += f"   📝 {proof_short}\n\n"
     
-    scammer_text += f"**Viso scamerių:** {len(confirmed_scammers)}"
+    scammer_text += f"Viso scamerių: {len(confirmed_scammers)}"
     
     msg = await update.message.reply_text(scammer_text, parse_mode='Markdown')
     context.job_queue.run_once(delete_message_job, 180, data=(chat_id, msg.message_id))
@@ -2796,20 +2796,20 @@ async def pending_reports(update: telegram.Update, context: telegram.ext.Context
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    reports_text = "⏳ **LAUKIANTYS PRANEŠIMAI** ⏳\n\n"
+    reports_text = "⏳ LAUKIANTYS PRANEŠIMAI ⏳\n\n"
     
     for report_id, report in pending_scammer_reports.items():
         date = report['timestamp'].strftime('%m-%d %H:%M')
         proof_short = report['proof'][:40] + "..." if len(report['proof']) > 40 else report['proof']
         
-        reports_text += f"**#{report_id}** {report['username']}\n"
+        reports_text += f"#{report_id} {report['username']}\n"
         reports_text += f"   👤 {report['reporter_username']}\n"
         reports_text += f"   📅 {date}\n"
         reports_text += f"   📝 {proof_short}\n"
         reports_text += f"   ✅ `/approve_scammer {report_id}`\n"
         reports_text += f"   ❌ `/reject_scammer {report_id}`\n\n"
     
-    reports_text += f"**Viso pranešimų:** {len(pending_scammer_reports)}"
+    reports_text += f"Viso pranešimų: {len(pending_scammer_reports)}"
     
     msg = await update.message.reply_text(reports_text, parse_mode='Markdown')
     context.job_queue.run_once(delete_message_job, 120, data=(chat_id, msg.message_id))
@@ -2875,28 +2875,28 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 
     
     commands_text = f"""
-📚 **VISŲ KOMANDŲ VADOVAS** 📚
+📚 VISŲ KOMANDŲ VADOVAS 📚
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🏆 **BALSAVIMO SISTEMA**
+🏆 BALSAVIMO SISTEMA
 📊 `/barygos` - Pardavėjų reitingai (savaitės, mėnesio, visų laikų)
 📊 `/balsuoti` - Nukreipia į balsavimo grupę (+5 tšk, 1x/savaitę)
 👎 `/nepatiko @pardavejas priežastis` - Skundu pardavėją (+5 tšk, 1x/savaitę)
 
-🛡️ **SAUGUMO SISTEMA**
+🛡️ SAUGUMO SISTEMA
 🚨 `/scameris @username įrodymai` - Pranešti scamerį (+3 tšk, 5x/dieną)
 🔍 `/patikra @username` - Patikrinti ar vartotojas scameris
 📋 `/scameriai` - Peržiūrėti visų patvirtintų scamerių sąrašą
 
-💰 **TAŠKŲ SISTEMA**
+💰 TAŠKŲ SISTEMA
 💰 `/points` - Patikrinti savo taškus ir pokalbių seriją
 👑 `/chatking` - Visų laikų pokalbių lyderiai su pasiekimų lygiais
 
-🎮 **ŽAIDIMAI IR VEIKLA**
+🎮 ŽAIDIMAI IR VEIKLA
 🎯 `/coinflip suma @vartotojas` - Iššūkis monetos metimui (laimėtojas gauna taškus)
 📋 `/apklausa klausimas` - Sukurti grupės apklausą
 
-ℹ️ **INFORMACIJA**
+ℹ️ INFORMACIJA
 📚 `/komandos` - Šis detalus komandų sąrašas
 🤖 `/help` - Trumpas pagalbos tekstas
 ❓ `/whoami` - Tavo vartotojo informacija ir ID
@@ -2904,34 +2904,34 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💎 **TAŠKŲ GAVIMO BŪDAI**
-• 📊 Balsavimas už pardavėją: **+5 taškų** (1x per savaitę)
-• 👎 Skundas pardavėjui: **+5 taškų** (1x per savaitę)
-• 🚨 Scamerio pranešimas: **+3 taškų** (5x per dieną)
-• 💬 Kasdieniai pokalbiai: **1-3 taškų** + serijos bonusas
-• 🔥 Serijos bonusas: **+1 tšk** už kiekvieną 3 dienų seriją
-• 🎯 Monetos metimas: **Laimėtojo suma** taškų
+💎 TAŠKŲ GAVIMO BŪDAI
+• 📊 Balsavimas už pardavėją: +5 taškų (1x per savaitę)
+• 👎 Skundas pardavėjui: +5 taškų (1x per savaitę)
+• 🚨 Scamerio pranešimas: +3 taškų (5x per dieną)
+• 💬 Kasdieniai pokalbiai: 1-3 taškų + serijos bonusas
+• 🔥 Serijos bonusas: +1 tšk už kiekvieną 3 dienų seriją
+• 🎯 Monetos metimas: Laimėtojo suma taškų
 
-🏅 **POKALBIŲ LYGIAI**
-🌱 **Pradžia:** 1-99 žinučių
-📈 **Naujokas:** 100-499 žinučių  
-🌟 **Aktyvus:** 500-999 žinučių
-💎 **Meistras:** 1,000-4,999 žinučių
-⚡ **Ekspertas:** 5,000-9,999 žinučių
-🔥 **Legenda:** 10,000+ žinučių
+🏅 POKALBIŲ LYGIAI
+🌱 Pradžia: 1-99 žinučių
+📈 Naujokas: 100-499 žinučių  
+🌟 Aktyvus: 500-999 žinučių
+💎 Meistras: 1,000-4,999 žinučių
+⚡ Ekspertas: 5,000-9,999 žinučių
+🔥 Legenda: 10,000+ žinučių
 
-⏰ **AUTOMATINIAI RESTARTAI**
+⏰ AUTOMATINIAI RESTARTAI
 • 🗓️ Savaitės balsai: kas sekmadienį 23:00
 • 📅 Mėnesio balsai: kiekvieną mėnesio 1-ą dieną
 • 💬 Pokalbių taškų suvestinė: kasdien 6:00
 
-🔒 **SAUGUMO PATARIMAI**
+🔒 SAUGUMO PATARIMAI
 • Visada naudok `/patikra @username` prieš sandorį
 • Pranešk apie scamerius su detaliais įrodymais
 • Saugok savo asmeninę informaciją
 • Nenurodyti pin kodų ar slaptažodžių
 
-📱 **NAUDOJIMO PATARIMAI**
+📱 NAUDOJIMO PATARIMAI
 • Komandos veikia tik šioje grupėje
 • Naudok @ prieš vartotojo vardus
 • Dalis komandų automatiškai ištrinamos po laiko
@@ -2943,20 +2943,20 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎯 **GREITI PAVYZDŽIAI**
+🎯 GREITI PAVYZDŽIAI
 • Balsuoti: `/balsuoti` → Spausk nuorodą → Rinktis pardavėją
 • Patikrinti: `/patikra @username` → Gauni saugumo ataskaitą  
 • Pranešti: `/scameris @blogas Nesiunčia prekių, ignoruoja`
 • Žaisti: `/coinflip 10 @friends` → Mėtkyos monetą už 10 tšk
 • Skundas: `/nepatiko @pardavejas Bloga kokybė, vėluoja`
 
-📊 **STATISTIKOS**
+📊 STATISTIKOS
 • Aktyvūs vartotojai šiandien: ~{len(daily_messages)}
 • Visų laikų žinučių: {sum(alltime_messages.values()):,}
 • Patvirtinti scameriai: {len(confirmed_scammers)}
 • Patikimi pardavėjai: {len(trusted_sellers)}
 
-💡 **PRO PATARIMAI**
+💡 PRO PATARIMAI
 • Rašyk kasdien - serija didina taškų gavimą
 • Dalyvaukite apklausose - stiprina bendruomenę  
 • Praneškit apie scamerius - apsaugot kitus
@@ -3077,7 +3077,7 @@ async def leaderboard(update: telegram.Update, context: telegram.ext.ContextType
         
         # Create beautiful header
         now = datetime.now(TIMEZONE)
-        header = "🏆✨ **BENDROS LYDERIŲ LENTOS** ✨🏆\n"
+        header = "🏆✨ BENDROS LYDERIŲ LENTOS ✨🏆\n"
         header += f"📅 {now.strftime('%Y-%m-%d %H:%M')}\n"
         header += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
@@ -3085,7 +3085,7 @@ async def leaderboard(update: telegram.Update, context: telegram.ext.ContextType
         sorted_points = sorted(user_points.items(), key=lambda x: x[1], reverse=True)[:10]
         max_points = sorted_points[0][1] if sorted_points else 1
         
-        points_board = "💰 **TAŠKŲ MAGNATAI** 💰\n"
+        points_board = "💰 TAŠKŲ MAGNATAI 💰\n"
         points_board += "┌─────────────────────────────────────┐\n"
         
         if not sorted_points:
@@ -3130,7 +3130,7 @@ async def leaderboard(update: telegram.Update, context: telegram.ext.ContextType
         sorted_messages = sorted(alltime_messages.items(), key=lambda x: x[1], reverse=True)[:10]
         max_messages = sorted_messages[0][1] if sorted_messages else 1
         
-        messages_board = "💬 **POKALBIŲ ČEMPIONAI** 💬\n"
+        messages_board = "💬 POKALBIŲ ČEMPIONAI 💬\n"
         messages_board += "┌─────────────────────────────────────┐\n"
         
         if not sorted_messages:
