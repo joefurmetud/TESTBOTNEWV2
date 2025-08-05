@@ -2541,6 +2541,16 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
             f"⚠️ **ATSARGIAI!** Šis vartotojas yra žinomas scameris!"
         )
         context.job_queue.run_once(delete_message_job, 120, data=(chat_id, msg.message_id))
+    elif check_username in trusted_sellers:
+        # Check if user is a trusted seller
+        msg = await update.message.reply_text(
+            f"✅ **PATIKIMAS PARDAVĖJAS** ✅\n\n"
+            f"**Vartotojas:** {check_username}\n"
+            f"**Statusas:** 🟢 LEGIT\n"
+            f"**Patikimas pardavėjas:** ✅\n\n"
+            f"🎯 Šis vartotojas yra patikimų pardavėjų sąraše!"
+        )
+        context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
     else:
         # Check if there are pending reports
         pending_count = sum(1 for report in pending_scammer_reports.values() 
@@ -2552,15 +2562,15 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
                 f"**Vartotojas:** {check_username}\n"
                 f"**Statusas:** ⚠️ Yra nepatvirtintų pranešimų ({pending_count})\n"
                 f"**Rekomendacija:** Būkite atsargūs, pranešimai dar tikrinami\n\n"
-                f"✅ Nėra patvirtintų scam įrašų"
+                f"ℹ️ Naudokite pardavėjus iš /barygos komandos"
             )
         else:
             msg = await update.message.reply_text(
-                f"✅ **PATIKRA ATLIKTA**\n\n"
+                f"ℹ️ **NĖRA INFORMACIJOS**\n\n"
                 f"**Vartotojas:** {check_username}\n"
-                f"**Statusas:** ✅ Švarus\n"
-                f"**Pranešimų:** 0\n\n"
-                f"Šis vartotojas nėra mūsų scamerių sąraše."
+                f"**Statusas:** ❓ Nėra duomenų\n\n"
+                f"🔍 Šis vartotojas nėra scamerių sąraše\n"
+                f"🛡️ Saugumui naudokite pardavėjus iš /barygos"
             )
         
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
