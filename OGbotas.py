@@ -2452,6 +2452,11 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
             user_info = await context.bot.get_chat(f"@{clean_username}")
             reported_user_id = user_info.id
             logger.info(f"Auto-detected user ID {reported_user_id} for username {reported_username}")
+        except telegram.error.BadRequest as e:
+            if "User not found" in str(e) or "Chat not found" in str(e):
+                logger.warning(f"User {reported_username} not found or private account")
+            else:
+                logger.warning(f"API error getting user ID for {reported_username}: {e}")
         except Exception as e:
             logger.warning(f"Could not auto-detect user ID for {reported_username}: {e}")
             # Continue without user ID - not critical
@@ -2494,6 +2499,11 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         
         # Create message with inline buttons
         user_id_info = f"User ID: {reported_user_id}" if reported_user_id else "User ID: Nerastas"
+        if reported_user_id:
+            logger.info(f"Scammer report #{scammer_report_id} includes user ID: {reported_user_id}")
+        else:
+            logger.warning(f"Scammer report #{scammer_report_id} has no user ID for {reported_username}")
+        
         admin_message = (
             f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
             f"Report ID: #{scammer_report_id}\n"
