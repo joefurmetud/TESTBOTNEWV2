@@ -338,8 +338,29 @@ try:
 except (ValueError, TypeError):
     VOTING_GROUP_CHAT_ID = 0
 
+# Helper IDs - users who can also approve/reject scammer reports
+HELPER_IDS = []
+helper_ids_env = os.getenv('HELPER_IDS', '')
+if helper_ids_env:
+    try:
+        HELPER_IDS = [int(id.strip()) for id in helper_ids_env.split(',') if id.strip()]
+        logger.info(f"Loaded {len(HELPER_IDS)} helper IDs: {HELPER_IDS}")
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Failed to parse HELPER_IDS: {e}")
+        HELPER_IDS = []
+
 PASSWORD = os.getenv('PASSWORD', 'shoebot123')
 VOTING_GROUP_LINK = os.getenv('VOTING_GROUP_LINK')
+
+def is_admin_or_helper(user_id):
+    """Check if user is admin or helper"""
+    return user_id == ADMIN_CHAT_ID or user_id in HELPER_IDS
+
+def get_all_moderators():
+    """Get list of all moderators (admin + helpers)"""
+    moderators = [ADMIN_CHAT_ID]
+    moderators.extend(HELPER_IDS)
+    return list(set(moderators))  # Remove duplicates
 
 # Check if required environment variables are set
 if not TOKEN:
@@ -2459,21 +2480,40 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         
         # Track that user made a report today (for daily limit counting)
         
-        # Send to admin for review
+        # Create message with inline buttons
         admin_message = (
-                    f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
-        f"Report ID: #{scammer_report_id}\n"
-        f"Pranešė: {reporter_username or f'User {user_id}'}\n"
-        f"Apie: {reported_username}\n"
-        f"Įrodymai: {proof}\n"
-        f"Laikas: {now.strftime('%Y-%m-%d %H:%M')}\n\n"
-        f"Veiksmai:\n"
-            f"✅ `/approve_scammer {scammer_report_id}` - Patvirtinti\n"
-            f"❌ `/reject_scammer {scammer_report_id}` - Atmesti\n"
-            f"📋 `/scammer_details {scammer_report_id}` - Detalės"
+            f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
+            f"Report ID: #{scammer_report_id}\n"
+            f"Pranešė: {reporter_username or f'User {user_id}'}\n"
+            f"Apie: {reported_username}\n"
+            f"Įrodymai: {proof}\n"
+            f"Laikas: {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+            f"Spustelėkite mygtukus žemiau:"
         )
         
-        await safe_send_message(context.bot, ADMIN_CHAT_ID, admin_message, parse_mode='Markdown')
+        # Create inline keyboard with approve/reject buttons
+        keyboard = [
+            [
+                telegram.InlineKeyboardButton("✅ Patvirtinti", callback_data=f"approve_scammer_{scammer_report_id}"),
+                telegram.InlineKeyboardButton("❌ Atmesti", callback_data=f"reject_scammer_{scammer_report_id}")
+            ],
+            [telegram.InlineKeyboardButton("📋 Detalės", callback_data=f"scammer_details_{scammer_report_id}")]
+        ]
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        
+        # Send to all moderators (admin + helpers)
+        moderators = get_all_moderators()
+        for moderator_id in moderators:
+            try:
+                await context.bot.send_message(
+                    chat_id=moderator_id,
+                    text=admin_message,
+                    reply_markup=reply_markup,
+                    parse_mode='Markdown'
+                )
+                logger.info(f"Sent scammer report #{scammer_report_id} to moderator {moderator_id}")
+            except Exception as e:
+                logger.warning(f"Failed to send scammer report to moderator {moderator_id}: {e}")
         
         # Confirm to user
         msg = await update.message.reply_text(
@@ -2581,8 +2621,8 @@ async def approve_scammer(update: telegram.Update, context: telegram.ext.Context
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
     
-    if user_id != ADMIN_CHAT_ID:
-        msg = await update.message.reply_text("Tik adminas gali patvirtinti scamer pranešimus!")
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminai ir pagalbininkai gali patvirtinti scamer pranešimus!")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
@@ -2655,8 +2695,8 @@ async def reject_scammer(update: telegram.Update, context: telegram.ext.ContextT
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
     
-    if user_id != ADMIN_CHAT_ID:
-        msg = await update.message.reply_text("Tik adminas gali atmesti scamer pranešimus!")
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminai ir pagalbininkai gali atmesti scamer pranešimus!")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
@@ -2708,6 +2748,167 @@ async def reject_scammer(update: telegram.Update, context: telegram.ext.ContextT
         logger.error(f"Error rejecting scammer: {str(e)}")
         msg = await update.message.reply_text("Klaida atmestant pranešimą!")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+
+
+# Callback handlers for inline buttons
+async def handle_scammer_callback(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle inline button callbacks for scammer reports"""
+    query = update.callback_query
+    await query.answer()  # Acknowledge the callback
+    
+    user_id = query.from_user.id
+    callback_data = query.data
+    
+    # Check if user is authorized
+    if not is_admin_or_helper(user_id):
+        await query.edit_message_text("❌ Tik adminai ir pagalbininkai gali valdyti scamer pranešimus!")
+        return
+    
+    try:
+        # Parse callback data
+        if callback_data.startswith("approve_scammer_"):
+            report_id = int(callback_data.replace("approve_scammer_", ""))
+            await approve_scammer_callback(query, context, report_id, user_id)
+        elif callback_data.startswith("reject_scammer_"):
+            report_id = int(callback_data.replace("reject_scammer_", ""))
+            await reject_scammer_callback(query, context, report_id, user_id)
+        elif callback_data.startswith("scammer_details_"):
+            report_id = int(callback_data.replace("scammer_details_", ""))
+            await scammer_details_callback(query, context, report_id)
+        else:
+            await query.edit_message_text("❌ Nežinomas veiksmas!")
+    except ValueError:
+        await query.edit_message_text("❌ Neteisingas report ID!")
+    except Exception as e:
+        logger.error(f"Error handling scammer callback: {str(e)}")
+        await query.edit_message_text("❌ Klaida vykdant veiksmą!")
+
+async def approve_scammer_callback(query, context, report_id, user_id):
+    """Handle approve scammer button callback"""
+    if report_id not in pending_scammer_reports:
+        await query.edit_message_text(f"❌ Pranešimas #{report_id} nerastas arba jau apdorotas!")
+        return
+    
+    try:
+        report = pending_scammer_reports[report_id]
+        username = report['username'].lower()
+        
+        # Move to confirmed scammers
+        confirmed_scammers[username] = {
+            'confirmed_by': user_id,
+            'reporter_id': report['reporter_id'],
+            'proof': report['proof'],
+            'timestamp': datetime.now(TIMEZONE),
+            'reports_count': 1,
+            'original_report_id': report_id
+        }
+        
+        # Remove from pending
+        del pending_scammer_reports[report_id]
+        
+        # Save data
+        save_data(confirmed_scammers, 'confirmed_scammers.pkl')
+        save_data(pending_scammer_reports, 'pending_scammer_reports.pkl')
+        
+        # Add points to original reporter (if not already added)
+        await add_user_points(report['reporter_id'], 3, context, "Patvirtintas scamer pranešimas")
+        
+        # Update message
+        confirmed_text = (
+            f"✅ SCAMER PATVIRTINTAS\n\n"
+            f"Report ID: #{report_id}\n"
+            f"Scameris: {report['username']}\n"
+            f"Patvirtino: {query.from_user.first_name or 'Moderatorius'}\n"
+            f"Laikas: {datetime.now(TIMEZONE).strftime('%Y-%m-%d %H:%M')}\n\n"
+            f"Vartotojas pridėtas į scamerių sąrašą!"
+        )
+        await query.edit_message_text(confirmed_text)
+        
+        # Notify original reporter
+        try:
+            await context.bot.send_message(
+                chat_id=report['chat_id'],
+                text=f"✅ PRANEŠIMAS PATVIRTINTAS\n\n"
+                     f"Jūsų pranešimas apie {report['username']} buvo patvirtintas!\n"
+                     f"Vartotojas pridėtas į scamerių sąrašą. Ačiū už bendruomenės saugumą! 🛡️\n"
+                     f"Gavote +3 taškus už patvirtintą pranešimą!"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to notify reporter about approved scammer: {e}")
+        
+        logger.info(f"Moderator {user_id} approved scammer report #{report_id} for {report['username']}")
+        
+    except Exception as e:
+        logger.error(f"Error approving scammer: {str(e)}")
+        await query.edit_message_text("❌ Klaida patvirtinant pranešimą!")
+
+async def reject_scammer_callback(query, context, report_id, user_id):
+    """Handle reject scammer button callback"""
+    if report_id not in pending_scammer_reports:
+        await query.edit_message_text(f"❌ Pranešimas #{report_id} nerastas arba jau apdorotas!")
+        return
+    
+    try:
+        report = pending_scammer_reports[report_id]
+        
+        # Remove from pending
+        del pending_scammer_reports[report_id]
+        save_data(pending_scammer_reports, 'pending_scammer_reports.pkl')
+        
+        # Update message
+        rejected_text = (
+            f"❌ PRANEŠIMAS ATMESTAS\n\n"
+            f"Report ID: #{report_id}\n"
+            f"Apie: {report['username']}\n"
+            f"Atmėtė: {query.from_user.first_name or 'Moderatorius'}\n"
+            f"Laikas: {datetime.now(TIMEZONE).strftime('%Y-%m-%d %H:%M')}\n\n"
+            f"Pranešimas pašalintas iš sąrašo."
+        )
+        await query.edit_message_text(rejected_text)
+        
+        # Notify original reporter
+        try:
+            await context.bot.send_message(
+                chat_id=report['chat_id'],
+                text=f"❌ PRANEŠIMAS ATMESTAS\n\n"
+                     f"Jūsų pranešimas apie {report['username']} buvo atmestas.\n"
+                     f"Įrodymai buvo nepakankant arba neteisingi."
+            )
+        except Exception as e:
+            logger.warning(f"Failed to notify reporter about rejected scammer: {e}")
+        
+        logger.info(f"Moderator {user_id} rejected scammer report #{report_id} for {report['username']}")
+        
+    except Exception as e:
+        logger.error(f"Error rejecting scammer: {str(e)}")
+        await query.edit_message_text("❌ Klaida atmestant pranešimą!")
+
+async def scammer_details_callback(query, context, report_id):
+    """Handle scammer details button callback"""
+    if report_id not in pending_scammer_reports:
+        await query.edit_message_text(f"❌ Pranešimas #{report_id} nerastas!")
+        return
+    
+    try:
+        report = pending_scammer_reports[report_id]
+        
+        details_text = (
+            f"📋 DETALĖS PRANEŠIMO #{report_id}\n\n"
+            f"👤 Pranešė: {report['reporter_username']}\n"
+            f"🚨 Apie: {report['username']}\n"
+            f"📅 Laikas: {report['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"🆔 Reporter ID: {report['reporter_id']}\n"
+            f"💬 Chat ID: {report['chat_id']}\n\n"
+            f"📝 ĮRODYMAI:\n{report['proof']}\n\n"
+            f"Spustelėkite mygtukus aukščiau norėdami patvirtinti arba atmesti."
+        )
+        
+        await query.edit_message_text(details_text)
+        
+    except Exception as e:
+        logger.error(f"Error showing scammer details: {str(e)}")
+        await query.edit_message_text("❌ Klaida rodant detales!")
+
 
 async def scameriai(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     """Show list of confirmed scammers (public command)"""
@@ -3425,6 +3626,9 @@ application.add_handler(CommandHandler(['approve_scammer'], approve_scammer))
 application.add_handler(CommandHandler(['reject_scammer'], reject_scammer))
 application.add_handler(CommandHandler(['scammer_list'], scammer_list))  # Admin detailed list
 application.add_handler(CommandHandler(['pending_reports'], pending_reports))
+
+# Add callback query handler for inline buttons
+application.add_handler(CallbackQueryHandler(handle_scammer_callback, pattern=r"^(approve_scammer_|reject_scammer_|scammer_details_)"))
 application.add_handler(MessageHandler(filters.Regex('^/start$') & filters.ChatType.PRIVATE, start_private))
 application.add_handler(CallbackQueryHandler(handle_vote_button, pattern="vote_"))
 application.add_handler(CallbackQueryHandler(handle_poll_button, pattern="poll_"))
