@@ -868,7 +868,8 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
     confirmation_text += f"• Viso laikų: **{alltime_votes}** balsų\n\n"
     confirmation_text += f"⏰ **Kitas balsavimas:**\n"
     confirmation_text += f"📅 {next_vote_formatted} (po 7 dienų)\n\n"
-    confirmation_text += f"🎯 Ačiū už dalyvavimą balsavime!"
+    confirmation_text += f"🎯 Ačiū už dalyvavimą balsavime!\n"
+    confirmation_text += f"⚠️ Ši žinutė bus ištrinta po 2 minučių"
     
     try:
         confirmation_msg = await context.bot.send_message(
