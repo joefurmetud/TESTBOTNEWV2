@@ -422,11 +422,17 @@ class DataManager:
         loop = asyncio.get_event_loop()
         
         # Acquire lock in thread pool to avoid blocking event loop
-        await loop.run_in_executor(None, lock.acquire)
+        acquired = await loop.run_in_executor(None, lock.acquire, True)  # blocking=True
+        if not acquired:
+            raise RuntimeError(f"Failed to acquire lock for {resource_name}")
+        
         try:
             yield
         finally:
-            lock.release()
+            try:
+                lock.release()
+            except RuntimeError as e:
+                logger.warning(f"Lock release error for {resource_name}: {e}")
 
 # Initialize data manager
 data_manager = DataManager()
@@ -474,7 +480,7 @@ application = Application.builder().token(TOKEN).post_init(configure_scheduler).
 logger.info("Bot initialized")
 
 # Data structures
-trusted_sellers = ['@Seller1', '@Seller2', '@Seller3']
+trusted_sellers = ['@Seller1', '@Seller2', '@Seller3', '@Vatnikas']
 
 # Load critical vote data with detailed logging
 logger.info("Loading votes_weekly.pkl...")
@@ -873,7 +879,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
     
     try:
         confirmation_msg = await context.bot.send_message(
-            chat_id=chat_id, 
+            chat_id=VOTING_GROUP_CHAT_ID,  # Send to voting group so everyone can see
             text=confirmation_text,
             parse_mode='Markdown'
         )
@@ -882,12 +888,12 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
         logger.warning(f"Failed to send formatted vote confirmation: {str(e)}")
         fallback_text = confirmation_text.replace('**', '').replace('*', '')
         confirmation_msg = await context.bot.send_message(
-            chat_id=chat_id, 
+            chat_id=VOTING_GROUP_CHAT_ID,  # Send to voting group so everyone can see
             text=fallback_text
         )
     
     # Delete confirmation message after 2 minutes (120 seconds)
-    context.job_queue.run_once(delete_message_job, 120, data=(chat_id, confirmation_msg.message_id))
+    context.job_queue.run_once(delete_message_job, 120, data=(VOTING_GROUP_CHAT_ID, confirmation_msg.message_id))
 
 async def updatevoting(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
