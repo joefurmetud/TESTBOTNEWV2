@@ -571,6 +571,12 @@ pending_scammer_reports = load_data('pending_scammer_reports.pkl', {})  # report
 confirmed_scammers = load_data('confirmed_scammers.pkl', {})  # username: {confirmed_by, reporter_id, proof, timestamp, reports_count}
 scammer_report_id = load_data('scammer_report_id.pkl', 0)
 
+# Create user_id to scammer mapping for reverse lookup
+user_id_to_scammer = {}  # user_id: username
+for username, scammer_info in confirmed_scammers.items():
+    if scammer_info.get('user_id'):
+        user_id_to_scammer[scammer_info['user_id']] = username
+
 def is_allowed_group(chat_id: str) -> bool:
     return str(chat_id) in allowed_groups
 
@@ -2417,7 +2423,8 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
             "📋 Naudojimas: `/scameris @username įrodymai`\n\n"
             "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
             "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
-            "💡 Pridėkite įrodymus po vartotojo vardo!"
+            "💡 Pridėkite įrodymus po vartotojo vardo!\n"
+            "🔍 Galite pridėti user ID: `/scameris @username 123456789 įrodymai`"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
@@ -2429,7 +2436,15 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    proof = sanitize_text_input(" ".join(context.args[1:]), max_length=500)
+    # Check if second argument is a user ID (numeric)
+    reported_user_id = None
+    proof_args = context.args[1:]
+    
+    if len(proof_args) >= 1 and proof_args[0].isdigit():
+        reported_user_id = int(proof_args[0])
+        proof_args = proof_args[1:]  # Remove user ID from proof arguments
+    
+    proof = sanitize_text_input(" ".join(proof_args), max_length=500)
     if not proof or len(proof.strip()) < 10:
         msg = await update.message.reply_text("❌ Prašau nurodyti detalius įrodymus (bent 10 simbolių)!")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
@@ -2455,6 +2470,7 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         # Store the report
         pending_scammer_reports[scammer_report_id] = {
             'username': reported_username,
+            'user_id': reported_user_id,  # Store user ID if provided
             'reporter_id': user_id,
             'reporter_username': reporter_username or f"User {user_id}",
             'proof': proof,
@@ -2535,8 +2551,8 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
     
     if len(context.args) < 1:
         msg = await update.message.reply_text(
-                    "📋 Naudojimas: `/patikra @username`\n\n"
-        "Pavyzdys: `/patikra @user123`\n"
+                    "📋 Naudojimas: `/patikra @username` arba `/patikra 123456789`\n\n"
+        "Pavyzdys: `/patikra @user123` arba `/patikra 123456789`\n"
             "Patikrinkite ar vartotojas yra scamerių sąraše"
         )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
@@ -2548,6 +2564,14 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         msg = await update.message.reply_text("❌ Netinkamas vartotojo vardas! Naudok @username formatą.")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
+    
+    # Check if input is a user ID (numeric)
+    check_user_id = None
+    if check_username.isdigit():
+        check_user_id = int(check_username)
+        # Find username by user ID
+        if check_user_id in user_id_to_scammer:
+            check_username = user_id_to_scammer[check_user_id]
     
     # Check if in confirmed scammers list
     if check_username.lower() in confirmed_scammers:
@@ -2781,11 +2805,16 @@ async def approve_scammer_callback(query, context, report_id, user_id):
         confirmed_scammers[username] = {
             'confirmed_by': user_id,
             'reporter_id': report['reporter_id'],
+            'user_id': report.get('user_id'),  # Store user ID if available
             'proof': report['proof'],
             'timestamp': datetime.now(TIMEZONE),
             'reports_count': 1,
             'original_report_id': report_id
         }
+        
+        # Update user_id to scammer mapping
+        if report.get('user_id'):
+            user_id_to_scammer[report['user_id']] = username
         
         # Remove from pending
         del pending_scammer_reports[report_id]
