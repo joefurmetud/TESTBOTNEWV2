@@ -2416,7 +2416,8 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         msg = await update.message.reply_text(
             "📋 Naudojimas: `/scameris @username įrodymai`\n\n"
             "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
-            "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris"
+            "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
+            "💡 Pridėkite įrodymus po vartotojo vardo!"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
