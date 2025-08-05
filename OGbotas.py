@@ -3411,17 +3411,15 @@ application.job_queue.run_repeating(cleanup_expired_challenges, interval=300, fi
 application.job_queue.run_repeating(cleanup_memory, interval=3600, first=60)  # Memory cleanup every hour
 
 # Weekly recap and reset - Every Sunday at 23:00
-application.job_queue.run_weekly(
-    lambda context: asyncio.create_task(weekly_recap(context)),
-    days=(6,),  # Sunday (0=Monday, 6=Sunday)
+application.job_queue.run_daily(
+    lambda context: asyncio.create_task(weekly_recap(context)) if datetime.now(TIMEZONE).weekday() == 6 else None,
     time=time(hour=23, minute=0)
 )
 
 # Monthly recap and reset - First day of each month at 00:30  
-application.job_queue.run_monthly(
-    lambda context: asyncio.create_task(monthly_recap_and_reset(context)),
-    when=time(hour=0, minute=30),
-    day=1
+application.job_queue.run_daily(
+    lambda context: asyncio.create_task(monthly_recap_and_reset(context)) if datetime.now(TIMEZONE).day == 1 else None,
+    time=time(hour=0, minute=30)
 )
 
 # Achievement and Badge System
