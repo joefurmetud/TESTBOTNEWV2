@@ -868,7 +868,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
         votes_alltime[seller] += 1
         voters.add(user_id)
         vote_history[seller].append((user_id, "up", "Button vote", now))
-        user_points[user_id] += 5
+        user_points[user_id] += 15
         last_vote_attempt[user_id] = now
 
         # Save all voting data atomically
@@ -878,7 +878,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
         save_data(vote_history, 'vote_history.pkl')
         save_data(user_points, 'user_points.pkl')
 
-    await query.answer("Ačiū už jūsų balsą, 5 taškai buvo pridėti prie jūsų sąskaitos.")
+    await query.answer("Ačiū už jūsų balsą, 15 taškų buvo pridėti prie jūsų sąskaitos.")
     
     # Get voter's username with better formatting
     if query.from_user.username:
@@ -901,7 +901,7 @@ async def handle_vote_button(update: telegram.Update, context: telegram.ext.Cont
     alltime_votes = votes_alltime.get(seller, 0)
     
     # Send short confirmation message
-    confirmation_text = f"🗳️ {voter_username} balsavo už {seller_name} (+5 tšk)\n"
+    confirmation_text = f"🗳️ {voter_username} balsavo už {seller_name} (+15 tšk)\n"
     confirmation_text += f"📊 Savaitė: {weekly_votes} | Viso: {alltime_votes}\n"
     confirmation_text += f"⏰ Kitas balsas: {next_vote_formatted}"
     
@@ -2408,25 +2408,8 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    # Check daily report limit (5 reports per day)
+    # No daily report limit - users can report unlimited scammers
     now = datetime.now(TIMEZONE)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # Count reports made today
-    reports_today = sum(1 for report in pending_scammer_reports.values() 
-                       if report['reporter_id'] == user_id and report['timestamp'] >= today_start)
-    
-    # Also count approved reports from today
-    approved_today = sum(1 for scammer_info in confirmed_scammers.values() 
-                        if scammer_info.get('reporter_id') == user_id and 
-                        scammer_info['timestamp'] >= today_start)
-    
-    total_reports_today = reports_today + approved_today
-    
-    if total_reports_today >= 5:
-        msg = await update.message.reply_text(f"Pasiekėte dienų limitą! Galite pateikti iki 5 pranešimų per dieną. Šiandien: {total_reports_today}/5")
-        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
-        return
     
     # Input validation
     if len(context.args) < 2:
@@ -3051,9 +3034,9 @@ async def help_command(update: telegram.Update, context: telegram.ext.ContextTyp
 ❓ /whoami - Tavo vartotojo informacija
 
 🎖️ Taškų Sistema:
-• Balsavimas už pardavėją: +5 taškų (1x per savaitę)
+• Balsavimas už pardavėją: +15 taškų (1x per savaitę)
 • Skundas pardavėjui: +5 taškų (1x per savaitę)  
-• Scamerio pranešimas: +3 taškų (5x per dieną)
+• Scamerio pranešimas: +3 taškų (neribota)
 • Kasdieniai pokalbiai: 1-3 taškų + serijos bonusas
 • Serijos bonusas: +1 tšk už kiekvieną 3 dienų seriją
 
@@ -3081,11 +3064,11 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 
 🏆 BALSAVIMO SISTEMA
 📊 `/barygos` - Pardavėjų reitingai (savaitės, mėnesio, visų laikų)
-📊 `/balsuoti` - Nukreipia į balsavimo grupę (+5 tšk, 1x/savaitę)
+📊 `/balsuoti` - Nukreipia į balsavimo grupę (+15 tšk, 1x/savaitę)
 👎 `/nepatiko @pardavejas priežastis` - Skundu pardavėją (+5 tšk, 1x/savaitę)
 
 🛡️ SAUGUMO SISTEMA
-🚨 `/scameris @username įrodymai` - Pranešti scamerį (+3 tšk, 5x/dieną)
+🚨 `/scameris @username įrodymai` - Pranešti scamerį (+3 tšk, neribota)
 🔍 `/patikra @username` - Patikrinti ar vartotojas scameris
 📋 `/scameriai` - Peržiūrėti visų patvirtintų scamerių sąrašą
 
@@ -3106,9 +3089,9 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💎 TAŠKŲ GAVIMO BŪDAI
-• 📊 Balsavimas už pardavėją: +5 taškų (1x per savaitę)
+• 📊 Balsavimas už pardavėją: +15 taškų (1x per savaitę)
 • 👎 Skundas pardavėjui: +5 taškų (1x per savaitę)
-• 🚨 Scamerio pranešimas: +3 taškų (5x per dieną)
+• 🚨 Scamerio pranešimas: +3 taškų (neribota)
 • 💬 Kasdieniai pokalbiai: 1-3 taškų + serijos bonusas
 • 🔥 Serijos bonusas: +1 tšk už kiekvieną 3 dienų seriją
 • 🎯 Monetos metimas: Laimėtojo suma taškų
