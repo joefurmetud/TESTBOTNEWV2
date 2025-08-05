@@ -2646,9 +2646,9 @@ async def approve_scammer(update: telegram.Update, context: telegram.ext.Context
         try:
             await context.bot.send_message(
                 chat_id=report['chat_id'],
-                text=f"✅ PRANEŠIMAS PATVIRTINTAS\n\n"
-                     f"Jūsų pranešimas apie {report['username']} buvo patvirtintas!\n"
-                     f"Vartotojas pridėtas į scamerių sąrašą. Ačiū už bendruomenės saugumą! 🛡️"
+                text=f"🚨 SCAMER PATVIRTINTAS! 🚨\n\n"
+                     f"@{report['username']} pridėtas į scamerių sąrašą!\n"
+                     f"+3 taškai už patvirtintą pranešimą! 🛡️"
             )
         except (telegram.error.TelegramError, telegram.error.ChatNotFound) as e:
             logger.warning(f"Failed to notify reporter about approved scammer report: {e}")
@@ -2813,10 +2813,9 @@ async def approve_scammer_callback(query, context, report_id, user_id):
         try:
             await context.bot.send_message(
                 chat_id=report['chat_id'],
-                text=f"✅ PRANEŠIMAS PATVIRTINTAS\n\n"
-                     f"Jūsų pranešimas apie {report['username']} buvo patvirtintas!\n"
-                     f"Vartotojas pridėtas į scamerių sąrašą. Ačiū už bendruomenės saugumą! 🛡️\n"
-                     f"Gavote +3 taškus už patvirtintą pranešimą!"
+                text=f"🚨 SCAMER PATVIRTINTAS! 🚨\n\n"
+                     f"@{report['username']} pridėtas į scamerių sąrašą!\n"
+                     f"+3 taškai už patvirtintą pranešimą! 🛡️"
             )
         except Exception as e:
             logger.warning(f"Failed to notify reporter about approved scammer: {e}")
