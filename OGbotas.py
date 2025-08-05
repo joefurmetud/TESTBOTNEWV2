@@ -479,8 +479,23 @@ async def configure_scheduler(application):
 application = Application.builder().token(TOKEN).post_init(configure_scheduler).build()
 logger.info("Bot initialized")
 
-# Data structures
-trusted_sellers = ['@Seller1', '@Seller2', '@Seller3', '@Vatnikas']
+# Data structures - Load trusted sellers from persistent storage
+default_sellers = ['@Seller1', '@Seller2', '@Seller3', '@Vatnikas']
+trusted_sellers = load_data('trusted_sellers.pkl', default_sellers)
+logger.info(f"Loaded trusted sellers: {trusted_sellers}")
+
+def save_trusted_sellers():
+    """Save trusted sellers to persistent storage"""
+    save_data(trusted_sellers, 'trusted_sellers.pkl')
+    logger.info(f"Saved trusted sellers: {trusted_sellers}")
+
+# Ensure @Vatnikas is in the list and save the initial state
+if '@Vatnikas' not in trusted_sellers:
+    trusted_sellers.append('@Vatnikas')
+    logger.info("Added @Vatnikas to trusted sellers list")
+
+# Save the trusted sellers list on startup to ensure persistence
+save_trusted_sellers()
 
 # Load critical vote data with detailed logging
 logger.info("Loading votes_weekly.pkl...")
@@ -1320,6 +1335,8 @@ async def addseller(update: telegram.Update, context: telegram.ext.ContextTypes.
     
     try:
         trusted_sellers.append(vendor)
+        save_trusted_sellers()  # Save to persistent storage
+        
         # Initialize data structures for new seller
         votes_weekly.setdefault(vendor, 0)
         votes_monthly.setdefault(vendor, [])
@@ -1368,6 +1385,8 @@ async def removeseller(update: telegram.Update, context: telegram.ext.ContextTyp
     
     try:
         trusted_sellers.remove(vendor)
+        save_trusted_sellers()  # Save to persistent storage
+        
         votes_weekly.pop(vendor, None)
         votes_monthly.pop(vendor, None)
         votes_alltime.pop(vendor, None)
