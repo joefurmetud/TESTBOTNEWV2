@@ -2885,10 +2885,19 @@ async def scammer_details_callback(query, context, report_id):
             f"🆔 Reporter ID: {report['reporter_id']}\n"
             f"💬 Chat ID: {report['chat_id']}\n\n"
             f"📝 ĮRODYMAI:\n{report['proof']}\n\n"
-            f"Spustelėkite mygtukus aukščiau norėdami patvirtinti arba atmesti."
+            f"Spustelėkite mygtukus žemiau norėdami patvirtinti arba atmesti:"
         )
         
-        await query.edit_message_text(details_text)
+        # Create inline keyboard with approve/reject buttons
+        keyboard = [
+            [
+                telegram.InlineKeyboardButton("✅ Patvirtinti", callback_data=f"approve_scammer_{report_id}"),
+                telegram.InlineKeyboardButton("❌ Atmesti", callback_data=f"reject_scammer_{report_id}")
+            ]
+        ]
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(details_text, reply_markup=reply_markup)
         
     except Exception as e:
         logger.error(f"Error showing scammer details: {str(e)}")
