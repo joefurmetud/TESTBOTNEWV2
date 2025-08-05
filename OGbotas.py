@@ -1462,7 +1462,7 @@ async def barygos(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         header += f"📢 {last_addftbaryga2_message}\n\n"
     
     # Build mobile-friendly Weekly Leaderboard
-            weekly_board = "🔥 SAVAITĖS ČEMPIONAI 🔥\n"
+    weekly_board = "🔥 SAVAITĖS ČEMPIONAI 🔥\n"
     weekly_board += f"📊 {now.strftime('%V savaitė')}\n\n"
     
     if not votes_weekly:
@@ -2794,7 +2794,8 @@ async def approve_scammer_callback(query, context, report_id, user_id):
         save_data(pending_scammer_reports, 'pending_scammer_reports.pkl')
         
         # Add points to original reporter (if not already added)
-        await add_user_points(report['reporter_id'], 3, context, "Patvirtintas scamer pranešimas")
+        user_points[report['reporter_id']] = user_points.get(report['reporter_id'], 0) + 3
+        save_data(user_points, 'user_points.pkl')
         
         # Update message
         confirmed_text = (
