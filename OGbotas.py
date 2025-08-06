@@ -567,15 +567,31 @@ username_to_id = {}
 polls = {}
 
 # Scammer tracking system
-pending_scammer_reports = load_data('pending_scammer_reports.pkl', {})  # report_id: {username, reporter_id, proof, timestamp, chat_id}
-confirmed_scammers = load_data('confirmed_scammers.pkl', {})  # username: {confirmed_by, reporter_id, proof, timestamp, reports_count}
+pending_scammer_reports = load_data('pending_scammer_reports.pkl', {})  # report_id: {username, user_id, reporter_id, proof, timestamp, chat_id}
+confirmed_scammers = load_data('confirmed_scammers.pkl', {})  # username: {confirmed_by, reporter_id, proof, timestamp, reports_count, user_id}
 scammer_report_id = load_data('scammer_report_id.pkl', 0)
+
+# Dishonest seller tracking system
+pending_dishonest_reports = load_data('pending_dishonest_reports.pkl', {})  # report_id: {username, user_id, reporter_id, reason, timestamp, chat_id}
+confirmed_dishonest = load_data('confirmed_dishonest.pkl', {})  # username: {confirmed_by, reporter_id, reason, timestamp, reports_count, reporters_list, user_id}
+dishonest_report_id = load_data('dishonest_report_id.pkl', 0)
+
+logger.info("Loading dishonest seller data...")
+logger.info(f"pending_dishonest_reports loaded: {len(pending_dishonest_reports)} entries")
+logger.info(f"confirmed_dishonest loaded: {len(confirmed_dishonest)} entries")
+logger.info(f"dishonest_report_id: {dishonest_report_id}")
 
 # Create user_id to scammer mapping for reverse lookup
 user_id_to_scammer = {}  # user_id: username
 for username, scammer_info in confirmed_scammers.items():
     if scammer_info.get('user_id'):
         user_id_to_scammer[scammer_info['user_id']] = username
+
+# Create user_id to dishonest seller mapping for reverse lookup
+user_id_to_dishonest = {}  # user_id: username
+for username, dishonest_info in confirmed_dishonest.items():
+    if dishonest_info.get('user_id'):
+        user_id_to_dishonest[dishonest_info['user_id']] = username
 
 def is_allowed_group(chat_id: str) -> bool:
     return str(chat_id) in allowed_groups
@@ -710,6 +726,10 @@ async def startas(update: telegram.Update, context: telegram.ext.ContextTypes.DE
                 "🤖 Sveiki! Štai galimi veiksmai:\n\n"
                 "📊 /balsuoti - Balsuoti už pardavėjus balsavimo grupėje\n"
                 "👎 /nepatiko @pardavejas priežastis - Pateikti skundą (5 tšk)\n"
+                "🚨 /vagis @username priežastis - Pranešti nepatikimą pardavėją (10/dieną)\n"
+                "🔍 /neradejas @username - Patikrinti nepatikimą pardavėją\n"
+                "🚨 /scameris @username įrodymai - Pranešti scamerį (+3 tšk)\n"
+                "🔍 /patikra @username - Patikrinti ar vartotojas scameris\n"
                 "💰 /points - Patikrinti savo taškus ir seriją\n"
                 "👑 /chatking - Pokalbių lyderiai\n"
                 "📈 /barygos - Pardavėjų reitingai\n"
@@ -2232,6 +2252,538 @@ async def points(update: telegram.Update, context: telegram.ext.ContextTypes.DEF
     context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
     logger.info(f"Points for user_id={user_id}: {points}, Streak: {streak}")
 
+# Dishonest seller reporting system
+async def vagis(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Report a dishonest seller who lied and stole products"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not is_allowed_group(chat_id):
+        msg = await update.message.reply_text("Botas neveikia šioje grupėje!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Input validation - support both @username and user ID
+    if len(context.args) < 2:
+        msg = await update.message.reply_text("Naudok: /vagis @username 'Priežastis' arba /vagis @username ID 'Priežastis'")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Parse target - could be username or username + ID
+    target_username = sanitize_username(context.args[0])
+    if not target_username or len(target_username) < 2:
+        msg = await update.message.reply_text("Netinkamas vartotojo vardas! Naudok @username formatą.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Check if second argument is a user ID
+    target_user_id = None
+    reason_start_index = 1
+    
+    if len(context.args) > 1:
+        try:
+            # Check if second argument is a number (user ID)
+            potential_id = context.args[1]
+            if potential_id.isdigit() and len(potential_id) >= 6:  # Telegram user IDs are typically 9+ digits
+                target_user_id = int(potential_id)
+                reason_start_index = 2
+                logger.info(f"User ID provided: {target_user_id}")
+        except (ValueError, TypeError):
+            pass  # Not a user ID, treat as part of reason
+    
+    # Sanitize and validate reason
+    reason = sanitize_text_input(" ".join(context.args[reason_start_index:]), max_length=300)
+    if not reason or len(reason.strip()) < 5:
+        msg = await update.message.reply_text("Prašau nurodyti išsamią priežastį (bent 5 simboliai)!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Check if user is reporting themselves
+    try:
+        reporter_username = f"@{update.message.from_user.username}" if update.message.from_user.username else f"User{user_id}"
+        if target_username.lower() == reporter_username.lower():
+            msg = await update.message.reply_text("Negali pranešti apie save!")
+            context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+            return
+    except Exception as e:
+        logger.error(f"Error checking self-report: {str(e)}")
+    
+    # Rate limiting - max 10 reports per day per user
+    now = datetime.now(TIMEZONE)
+    user_reports_today = sum(1 for _, report in pending_dishonest_reports.items() 
+                            if report.get('reporter_id') == user_id and now - report.get('timestamp', now) < timedelta(hours=24))
+    if user_reports_today >= 10:
+        msg = await update.message.reply_text("Per daug pranešimų per dieną! Palauk.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    try:
+        global dishonest_report_id
+        dishonest_report_id += 1
+        
+        # Create report
+        pending_dishonest_reports[dishonest_report_id] = {
+            'username': target_username,
+            'user_id': target_user_id,
+            'reporter_id': user_id,
+            'reason': reason,
+            'timestamp': now,
+            'chat_id': chat_id
+        }
+        
+        # Save data
+        save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
+        save_data(dishonest_report_id, 'dishonest_report_id.pkl')
+        
+        # Send notification to admin with buttons
+        admin_message = f"🚨 NEPATIKIMAS PARDAVĖJAS #{dishonest_report_id}\n"
+        admin_message += f"👤 Vartotojas: {target_username}\n"
+        if target_user_id:
+            admin_message += f"🆔 User ID: {target_user_id}\n"
+        admin_message += f"📝 Priežastis: {reason}\n"
+        admin_message += f"👮 Pranešėjas: {reporter_username}\n"
+        admin_message += f"⏰ Laikas: {now.strftime('%Y-%m-%d %H:%M')}"
+        
+        # Create inline buttons for admin
+        keyboard = [
+            [InlineKeyboardButton("✅ Patvirtinti", callback_data=f"approve_dishonest_{dishonest_report_id}"),
+             InlineKeyboardButton("❌ Atmesti", callback_data=f"reject_dishonest_{dishonest_report_id}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await safe_send_message(context.bot, ADMIN_CHAT_ID, admin_message, reply_markup=reply_markup)
+        
+        # Confirm to user
+        msg = await update.message.reply_text(
+            f"✅ Pranešimas apie nepatikimą pardavėją {target_username} pateiktas!\n"
+            f"📋 ID: #{dishonest_report_id}\n"
+            f"⏳ Laukiama admin patvirtinimo..."
+        )
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        
+        logger.info(f"User {user_id} reported dishonest seller {target_username} (ID: {target_user_id}) with ID {dishonest_report_id}")
+        
+    except Exception as e:
+        logger.error(f"Error processing dishonest seller report: {str(e)}")
+        msg = await update.message.reply_text("Klaida pateikiant pranešimą. Bandyk vėliau.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+
+async def neradejas(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Check if a user is a dishonest seller"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not is_allowed_group(chat_id):
+        msg = await update.message.reply_text("Botas neveikia šioje grupėje!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Input validation
+    if len(context.args) < 1:
+        msg = await update.message.reply_text("Naudok: /neradejas @username")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Sanitize username
+    target_username = sanitize_username(context.args[0])
+    if not target_username or len(target_username) < 2:
+        msg = await update.message.reply_text("Netinkamas vartotojo vardas! Naudok @username formatą.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    try:
+        # Check by username first
+        found_dishonest = None
+        found_username = None
+        
+        if target_username in confirmed_dishonest:
+            found_dishonest = confirmed_dishonest[target_username]
+            found_username = target_username
+        else:
+            # Check by user ID if we have it stored
+            for username, dishonest_info in confirmed_dishonest.items():
+                if dishonest_info.get('user_id'):
+                    # Try to get user ID from username_to_id mapping
+                    stored_user_id = username_to_id.get(target_username.lower())
+                    if stored_user_id and stored_user_id == dishonest_info['user_id']:
+                        found_dishonest = dishonest_info
+                        found_username = username
+                        break
+        
+        if found_dishonest:
+            # Format the response
+            response = f"🚨 NEPATIKIMAS PARDAVĖJAS 🚨\n\n"
+            response += f"👤 Vartotojas: {found_username}\n"
+            if found_dishonest.get('user_id'):
+                response += f"🆔 User ID: {found_dishonest['user_id']}\n"
+            response += f"📊 Pranešimų skaičius: {found_dishonest.get('reports_count', 0)}\n"
+            response += f"📝 Priežastis: {found_dishonest.get('reason', 'Nenurodyta')}\n"
+            response += f"⏰ Patvirtinta: {found_dishonest.get('timestamp', 'Nenurodyta')}\n"
+            
+            # Show reporters if available
+            reporters_list = found_dishonest.get('reporters_list', [])
+            if reporters_list:
+                response += f"👮 Pranešėjai: {', '.join(reporters_list[:5])}"
+                if len(reporters_list) > 5:
+                    response += f" ir dar {len(reporters_list) - 5}"
+                response += "\n"
+            
+            response += f"\n⚠️ Šis vartotojas buvo patvirtintas kaip nepatikimas pardavėjas!"
+            
+        else:
+            # Check if there are pending reports
+            pending_count = 0
+            for _, report in pending_dishonest_reports.items():
+                if report['username'].lower() == target_username.lower():
+                    pending_count += 1
+                elif report.get('user_id'):
+                    # Check by user ID if available
+                    stored_user_id = username_to_id.get(target_username.lower())
+                    if stored_user_id and stored_user_id == report['user_id']:
+                        pending_count += 1
+            
+            if pending_count > 0:
+                response = f"⏳ {target_username} turi {pending_count} nepatvirtintą pranešimą apie nepatikimą pardavėją.\n"
+                response += "Laukiama admin patvirtinimo..."
+            else:
+                response = f"✅ {target_username} nėra nepatikimų pardavėjų sąraše."
+        
+        msg = await update.message.reply_text(response)
+        context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
+        
+    except Exception as e:
+        logger.error(f"Error checking dishonest seller: {str(e)}")
+        msg = await update.message.reply_text("Klaida tikrinant vartotoją.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+
+async def approve_dishonest(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Approve a dishonest seller report (admin only)"""
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminas gali patvirtinti pranešimus!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    try:
+        report_id = int(context.args[0])
+        if report_id not in pending_dishonest_reports:
+            msg = await update.message.reply_text("Neteisingas pranešimo ID!")
+            context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+            return
+        
+        report = pending_dishonest_reports[report_id]
+        username = report['username']
+        reporter_id = report['reporter_id']
+        reason = report['reason']
+        timestamp = report['timestamp']
+        target_user_id = report.get('user_id')
+        
+        # Get reporter username
+        try:
+            reporter_member = await context.bot.get_chat_member(chat_id, reporter_id)
+            reporter_username = f"@{reporter_member.user.username}" if reporter_member.user.username else f"User{reporter_id}"
+        except:
+            reporter_username = f"User{reporter_id}"
+        
+        # Add to confirmed dishonest sellers
+        if username in confirmed_dishonest:
+            # Update existing entry
+            confirmed_dishonest[username]['reports_count'] += 1
+            confirmed_dishonest[username]['reporters_list'].append(reporter_username)
+            # Update user_id if not already set
+            if target_user_id and not confirmed_dishonest[username].get('user_id'):
+                confirmed_dishonest[username]['user_id'] = target_user_id
+        else:
+            # Create new entry
+            confirmed_dishonest[username] = {
+                'confirmed_by': user_id,
+                'reporter_id': reporter_id,
+                'reason': reason,
+                'timestamp': timestamp,
+                'reports_count': 1,
+                'reporters_list': [reporter_username],
+                'user_id': target_user_id
+            }
+        
+        # Update user_id_to_dishonest mapping
+        if target_user_id:
+            user_id_to_dishonest[target_user_id] = username
+        
+        # Remove from pending
+        del pending_dishonest_reports[report_id]
+        
+        # Save data
+        save_data(confirmed_dishonest, 'confirmed_dishonest.pkl')
+        save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
+        
+        # Notify group
+        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+        if target_user_id:
+            notification += f"🆔 User ID: {target_user_id}\n"
+        notification += f"📝 Priežastis: {reason}\n"
+        notification += f"👮 Pranešėjas: {reporter_username}\n"
+        notification += f"✅ Patvirtino: {update.message.from_user.username or 'Admin'}"
+        
+        try:
+            await context.bot.send_message(GROUP_CHAT_ID, notification)
+        except telegram.error.TelegramError as e:
+            logger.error(f"Failed to send dishonest seller notification: {str(e)}")
+        
+        msg = await update.message.reply_text(f"✅ Pranešimas apie {username} patvirtintas!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        
+        logger.info(f"Admin {user_id} approved dishonest seller report {report_id} for {username}")
+        
+    except (IndexError, ValueError):
+        msg = await update.message.reply_text("Naudok: /approve_dishonest ReportID")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+    except Exception as e:
+        logger.error(f"Error approving dishonest seller report: {str(e)}")
+        msg = await update.message.reply_text("Klaida patvirtinant pranešimą!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+
+async def reject_dishonest(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Reject a dishonest seller report (admin only)"""
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminas gali atmesti pranešimus!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    try:
+        report_id = int(context.args[0])
+        if report_id not in pending_dishonest_reports:
+            msg = await update.message.reply_text("Neteisingas pranešimo ID!")
+            context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+            return
+        
+        report = pending_dishonest_reports[report_id]
+        username = report['username']
+        
+        # Remove from pending
+        del pending_dishonest_reports[report_id]
+        
+        # Save data
+        save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
+        
+        msg = await update.message.reply_text(f"❌ Pranešimas apie {username} atmestas!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        
+        logger.info(f"Admin {user_id} rejected dishonest seller report {report_id} for {username}")
+        
+    except (IndexError, ValueError):
+        msg = await update.message.reply_text("Naudok: /reject_dishonest ReportID")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+    except Exception as e:
+        logger.error(f"Error rejecting dishonest seller report: {str(e)}")
+        msg = await update.message.reply_text("Klaida atmetant pranešimą!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+
+async def handle_dishonest_callback(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle callback queries for dishonest seller report buttons"""
+    query = update.callback_query
+    user_id = query.from_user.id
+    
+    if not is_admin_or_helper(user_id):
+        await query.answer("Tik adminas gali naudoti šiuos mygtukus!")
+        return
+    
+    data = query.data
+    
+    if data.startswith("approve_dishonest_"):
+        report_id = int(data.replace("approve_dishonest_", ""))
+        await approve_dishonest_callback(query, context, report_id, user_id)
+    elif data.startswith("reject_dishonest_"):
+        report_id = int(data.replace("reject_dishonest_", ""))
+        await reject_dishonest_callback(query, context, report_id, user_id)
+
+async def approve_dishonest_callback(query, context, report_id, user_id):
+    """Handle approve button click for dishonest seller report"""
+    try:
+        if report_id not in pending_dishonest_reports:
+            await query.answer("Pranešimas neegzistuoja!")
+            return
+        
+        report = pending_dishonest_reports[report_id]
+        username = report['username']
+        reporter_id = report['reporter_id']
+        reason = report['reason']
+        timestamp = report['timestamp']
+        target_user_id = report.get('user_id')
+        
+        # Get reporter username
+        try:
+            reporter_member = await context.bot.get_chat_member(query.message.chat_id, reporter_id)
+            reporter_username = f"@{reporter_member.user.username}" if reporter_member.user.username else f"User{reporter_id}"
+        except:
+            reporter_username = f"User{reporter_id}"
+        
+        # Add to confirmed dishonest sellers
+        if username in confirmed_dishonest:
+            # Update existing entry
+            confirmed_dishonest[username]['reports_count'] += 1
+            confirmed_dishonest[username]['reporters_list'].append(reporter_username)
+            # Update user_id if not already set
+            if target_user_id and not confirmed_dishonest[username].get('user_id'):
+                confirmed_dishonest[username]['user_id'] = target_user_id
+        else:
+            # Create new entry
+            confirmed_dishonest[username] = {
+                'confirmed_by': user_id,
+                'reporter_id': reporter_id,
+                'reason': reason,
+                'timestamp': timestamp,
+                'reports_count': 1,
+                'reporters_list': [reporter_username],
+                'user_id': target_user_id
+            }
+        
+        # Update user_id_to_dishonest mapping
+        if target_user_id:
+            user_id_to_dishonest[target_user_id] = username
+        
+        # Remove from pending
+        del pending_dishonest_reports[report_id]
+        
+        # Save data
+        save_data(confirmed_dishonest, 'confirmed_dishonest.pkl')
+        save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
+        
+        # Update the message to show it was approved
+        await query.edit_message_text(
+            f"✅ PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+            f"📝 Priežastis: {reason}\n"
+            f"👮 Pranešėjas: {reporter_username}\n"
+            f"✅ Patvirtino: {query.from_user.username or 'Admin'}"
+        )
+        
+        # Notify group
+        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+        if target_user_id:
+            notification += f"🆔 User ID: {target_user_id}\n"
+        notification += f"📝 Priežastis: {reason}\n"
+        notification += f"👮 Pranešėjas: {reporter_username}\n"
+        notification += f"✅ Patvirtino: {query.from_user.username or 'Admin'}"
+        
+        try:
+            await context.bot.send_message(GROUP_CHAT_ID, notification)
+        except telegram.error.TelegramError as e:
+            logger.error(f"Failed to send dishonest seller notification: {str(e)}")
+        
+        await query.answer("Pranešimas patvirtintas!")
+        logger.info(f"Admin {user_id} approved dishonest seller report {report_id} for {username}")
+        
+    except Exception as e:
+        logger.error(f"Error in approve_dishonest_callback: {str(e)}")
+        await query.answer("Klaida patvirtinant pranešimą!")
+
+async def reject_dishonest_callback(query, context, report_id, user_id):
+    """Handle reject button click for dishonest seller report"""
+    try:
+        if report_id not in pending_dishonest_reports:
+            await query.answer("Pranešimas neegzistuoja!")
+            return
+        
+        report = pending_dishonest_reports[report_id]
+        username = report['username']
+        
+        # Remove from pending
+        del pending_dishonest_reports[report_id]
+        
+        # Save data
+        save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
+        
+        # Update the message to show it was rejected
+        await query.edit_message_text(
+            f"❌ ATMESTA: Pranešimas apie {username} atmestas\n"
+            f"👤 Admin: {query.from_user.username or 'Admin'}"
+        )
+        
+        await query.answer("Pranešimas atmestas!")
+        logger.info(f"Admin {user_id} rejected dishonest seller report {report_id} for {username}")
+        
+    except Exception as e:
+        logger.error(f"Error in reject_dishonest_callback: {str(e)}")
+        await query.answer("Klaida atmetant pranešimą!")
+
+async def dishonest_list(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """List all confirmed dishonest sellers (admin only)"""
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminas gali peržiūrėti sąrašą!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    if not confirmed_dishonest:
+        msg = await update.message.reply_text("Nėra patvirtintų nepatikimų pardavėjų.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    response = "🚨 PATVIRTINTI NEPATIKIMI PARDAVĖJAI 🚨\n\n"
+    
+    for username, info in confirmed_dishonest.items():
+        reports_count = info.get('reports_count', 0)
+        reason = info.get('reason', 'Nenurodyta')
+        timestamp = info.get('timestamp', 'Nenurodyta')
+        
+        if isinstance(timestamp, datetime):
+            timestamp = timestamp.strftime('%Y-%m-%d %H:%M')
+        
+        response += f"👤 {username}\n"
+        response += f"📊 Pranešimų: {reports_count}\n"
+        response += f"📝 Priežastis: {reason}\n"
+        response += f"⏰ Patvirtinta: {timestamp}\n"
+        response += "─" * 30 + "\n\n"
+    
+    response += f"📊 Iš viso: {len(confirmed_dishonest)} nepatikimų pardavėjų"
+    
+    msg = await update.message.reply_text(response)
+    context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
+
+async def pending_dishonest_reports_list(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """List all pending dishonest seller reports (admin only)"""
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("Tik adminas gali peržiūrėti sąrašą!")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    if not pending_dishonest_reports:
+        msg = await update.message.reply_text("Nėra laukiančių pranešimų apie nepatikimus pardavėjus.")
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    response = "⏳ LAUKIANČI NEPATIKIMŲ PARDAVĖJŲ PRANEŠIMAI ⏳\n\n"
+    
+    for report_id, report in pending_dishonest_reports.items():
+        username = report['username']
+        reason = report['reason']
+        timestamp = report['timestamp']
+        
+        if isinstance(timestamp, datetime):
+            timestamp = timestamp.strftime('%Y-%m-%d %H:%M')
+        
+        response += f"📋 ID: #{report_id}\n"
+        response += f"👤 Vartotojas: {username}\n"
+        response += f"📝 Priežastis: {reason}\n"
+        response += f"⏰ Laikas: {timestamp}\n"
+        response += f"✅ Patvirtinti: /approve_dishonest {report_id}\n"
+        response += f"❌ Atmesti: /reject_dishonest {report_id}\n"
+        response += "─" * 30 + "\n\n"
+    
+    response += f"📊 Iš viso: {len(pending_dishonest_reports)} laukiančių pranešimų"
+    
+    msg = await update.message.reply_text(response)
+    context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
+
 # New admin commands for resetting votes
 async def reset_weekly(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
@@ -2420,8 +2972,9 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
     # Input validation
     if len(context.args) < 2:
         msg = await update.message.reply_text(
-            "📋 Naudojimas: `/scameris @username įrodymai`\n\n"
+            "📋 Naudojimas: `/scameris @username įrodymai` arba `/scameris @username ID įrodymai`\n\n"
             "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
+            "Pavyzdys: `/scameris @scammer123 123456789 Nepavede prekės, ignoruoja žinutes`\n"
             "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
             "💡 Pridėkite įrodymus po vartotojo vardo!\n"
             "🤖 Botas automatiškai bandys rasti user ID\n"
@@ -2598,21 +3151,37 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         if check_user_id in user_id_to_scammer:
             check_username = user_id_to_scammer[check_user_id]
     
-    # Check if in confirmed scammers list
+    # Check if in confirmed scammers list by username or user ID
+    found_scammer = None
+    found_username = None
+    
     if check_username.lower() in confirmed_scammers:
-        scammer_info = confirmed_scammers[check_username.lower()]
-        confirmed_date = scammer_info['timestamp'].strftime('%Y-%m-%d')
-        reports_count = scammer_info.get('reports_count', 1)
-        user_id_info = f"User ID: {scammer_info.get('user_id')}" if scammer_info.get('user_id') else "User ID: Nerastas (privatus paskyra)"
+        found_scammer = confirmed_scammers[check_username.lower()]
+        found_username = check_username
+    else:
+        # Check by user ID if we have it stored
+        for username, scammer_info in confirmed_scammers.items():
+            if scammer_info.get('user_id'):
+                # Try to get user ID from username_to_id mapping
+                stored_user_id = username_to_id.get(check_username.lower())
+                if stored_user_id and stored_user_id == scammer_info['user_id']:
+                    found_scammer = scammer_info
+                    found_username = username
+                    break
+    
+    if found_scammer:
+        confirmed_date = found_scammer['timestamp'].strftime('%Y-%m-%d')
+        reports_count = found_scammer.get('reports_count', 1)
+        user_id_info = f"User ID: {found_scammer.get('user_id')}" if found_scammer.get('user_id') else "User ID: Nerastas (privatus paskyra)"
         
         msg = await update.message.reply_text(
                     f"🚨 SCAMER RASTAS! 🚨\n\n"
-        f"Vartotojas: {check_username}\n"
+        f"Vartotojas: {found_username}\n"
         f"{user_id_info}\n"
         f"Statusas: ❌ Patvirtintas scameris\n"
         f"Patvirtinta: {confirmed_date}\n"
         f"Pranešimų: {reports_count}\n"
-        f"Įrodymai: {scammer_info.get('proof', 'Nenurodyta')}\n\n"
+        f"Įrodymai: {found_scammer.get('proof', 'Nenurodyta')}\n\n"
         f"⚠️ ATSARGIAI! Šis vartotojas yra žinomas scameris!"
         )
         context.job_queue.run_once(delete_message_job, 120, data=(chat_id, msg.message_id))
@@ -2627,9 +3196,16 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
     else:
-        # Check if there are pending reports
-        pending_count = sum(1 for report in pending_scammer_reports.values() 
-                          if report['username'].lower() == check_username.lower())
+        # Check if there are pending reports by username or user ID
+        pending_count = 0
+        for report in pending_scammer_reports.values():
+            if report['username'].lower() == check_username.lower():
+                pending_count += 1
+            elif report.get('user_id'):
+                # Check by user ID if available
+                stored_user_id = username_to_id.get(check_username.lower())
+                if stored_user_id and stored_user_id == report['user_id']:
+                    pending_count += 1
         
         if pending_count > 0:
             msg = await update.message.reply_text(
@@ -3135,8 +3711,12 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 
 🛡️ SAUGUMO SISTEMA
 🚨 `/scameris @username įrodymai` - Pranešti scamerį (+3 tšk, neribota)
+🚨 `/scameris @username ID įrodymai` - Pranešti scamerį su vartotojo ID
 🔍 `/patikra @username` - Patikrinti ar vartotojas scameris
 📋 `/scameriai` - Peržiūrėti visų patvirtintų scamerių sąrašą
+🚨 `/vagis @username priežastis` - Pranešti nepatikimą pardavėją (10/dieną)
+🚨 `/vagis @username ID priežastis` - Pranešti su vartotojo ID
+🔍 `/neradejas @username` - Patikrinti ar vartotojas nepatikimas pardavėjas
 
 💰 TAŠKŲ SISTEMA
 💰 `/points` - Patikrinti savo taškus ir pokalbių seriją
@@ -3204,12 +3784,13 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 • Aktyvūs vartotojai šiandien: ~{len(daily_messages)}
 • Visų laikų žinučių: {sum(alltime_messages.values()):,}
 • Patvirtinti scameriai: {len(confirmed_scammers)}
+• Nepatikimi pardavėjai: {len(confirmed_dishonest)}
 • Patikimi pardavėjai: {len(trusted_sellers)}
 
 💡 PRO PATARIMAI
 • Rašyk kasdien - serija didina taškų gavimą
 • Dalyvaukite apklausose - stiprina bendruomenę  
-• Praneškit apie scamerius - apsaugot kitus
+• Praneškit apie scamerius ir nepatikimus pardavėjus - apsaugot kitus
 • Sekite pardavėjų reitingus - raskite geriausius
 
 Norint gauti pilną pagalbą: `/help`
@@ -3676,8 +4257,17 @@ application.add_handler(CommandHandler(['reject_scammer'], reject_scammer))
 application.add_handler(CommandHandler(['scammer_list'], scammer_list))  # Admin detailed list
 application.add_handler(CommandHandler(['pending_reports'], pending_reports))
 
+# Dishonest seller reporting commands
+application.add_handler(CommandHandler(['vagis'], vagis))
+application.add_handler(CommandHandler(['neradejas'], neradejas))
+application.add_handler(CommandHandler(['approve_dishonest'], approve_dishonest))
+application.add_handler(CommandHandler(['reject_dishonest'], reject_dishonest))
+application.add_handler(CommandHandler(['dishonest_list'], dishonest_list))
+application.add_handler(CommandHandler(['pending_dishonest_reports'], pending_dishonest_reports_list))
+
 # Add callback query handler for inline buttons
 application.add_handler(CallbackQueryHandler(handle_scammer_callback, pattern=r"^(approve_scammer_|reject_scammer_|scammer_details_)"))
+application.add_handler(CallbackQueryHandler(handle_dishonest_callback, pattern=r"^(approve_dishonest_|reject_dishonest_)"))
 application.add_handler(MessageHandler(filters.Regex('^/start$') & filters.ChatType.PRIVATE, start_private))
 application.add_handler(CallbackQueryHandler(handle_vote_button, pattern="vote_"))
 application.add_handler(CallbackQueryHandler(handle_poll_button, pattern="poll_"))
