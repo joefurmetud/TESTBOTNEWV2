@@ -726,8 +726,8 @@ async def startas(update: telegram.Update, context: telegram.ext.ContextTypes.DE
                 "🤖 Sveiki! Štai galimi veiksmai:\n\n"
                 "📊 /balsuoti - Balsuoti už pardavėjus balsavimo grupėje\n"
                 "👎 /nepatiko @pardavejas priežastis - Pateikti skundą (5 tšk)\n"
-                "🚨 /vagis @username priežastis - Pranešti nepatikimą pardavėją (10/dieną)\n"
-                "🔍 /neradejas @username - Patikrinti nepatikimą pardavėją\n"
+                "🚨 /vagis @username priežastis - Pranešti nepatikimą pirkėją (10/dieną)\n"
+                "🔍 /neradejas @username - Patikrinti nepatikimą pirkėją\n"
                 "🚨 /scameris @username įrodymai - Pranešti scamerį (+3 tšk)\n"
                 "🔍 /patikra @username - Patikrinti ar vartotojas scameris\n"
                 "💰 /points - Patikrinti savo taškus ir seriją\n"
@@ -2336,7 +2336,7 @@ async def vagis(update: telegram.Update, context: telegram.ext.ContextTypes.DEFA
         save_data(dishonest_report_id, 'dishonest_report_id.pkl')
         
         # Send notification to admin with buttons
-        admin_message = f"🚨 NEPATIKIMAS PARDAVĖJAS #{dishonest_report_id}\n"
+        admin_message = f"🚨 NEPATIKIMAS PIRKEJAS #{dishonest_report_id}\n"
         admin_message += f"👤 Vartotojas: {target_username}\n"
         if target_user_id:
             admin_message += f"🆔 User ID: {target_user_id}\n"
@@ -2355,7 +2355,7 @@ async def vagis(update: telegram.Update, context: telegram.ext.ContextTypes.DEFA
         
         # Confirm to user
         msg = await update.message.reply_text(
-            f"✅ Pranešimas apie nepatikimą pardavėją {target_username} pateiktas!\n"
+            f"✅ Pranešimas apie nepatikimą pirkėją {target_username} pateiktas!\n"
             f"📋 ID: #{dishonest_report_id}\n"
             f"⏳ Laukiama admin patvirtinimo..."
         )
@@ -2412,7 +2412,7 @@ async def neradejas(update: telegram.Update, context: telegram.ext.ContextTypes.
         
         if found_dishonest:
             # Format the response
-            response = f"🚨 NEPATIKIMAS PARDAVĖJAS 🚨\n\n"
+            response = f"🚨 NEPATIKIMAS PIRKEJAS 🚨\n\n"
             response += f"👤 Vartotojas: {found_username}\n"
             if found_dishonest.get('user_id'):
                 response += f"🆔 User ID: {found_dishonest['user_id']}\n"
@@ -2428,7 +2428,7 @@ async def neradejas(update: telegram.Update, context: telegram.ext.ContextTypes.
                     response += f" ir dar {len(reporters_list) - 5}"
                 response += "\n"
             
-            response += f"\n⚠️ Šis vartotojas buvo patvirtintas kaip nepatikimas pardavėjas!"
+            response += f"\n⚠️ Šis vartotojas buvo patvirtintas kaip nepatikimas pirkėjas!"
             
         else:
             # Check if there are pending reports
@@ -2443,10 +2443,10 @@ async def neradejas(update: telegram.Update, context: telegram.ext.ContextTypes.
                         pending_count += 1
             
             if pending_count > 0:
-                response = f"⏳ {target_username} turi {pending_count} nepatvirtintą pranešimą apie nepatikimą pardavėją.\n"
+                response = f"⏳ {target_username} turi {pending_count} nepatvirtintą pranešimą apie nepatikimą pirkėją.\n"
                 response += "Laukiama admin patvirtinimo..."
             else:
-                response = f"✅ {target_username} nėra nepatikimų pardavėjų sąraše."
+                response = f"✅ {target_username} nėra nepatikimų pirkėjų sąraše."
         
         msg = await update.message.reply_text(response)
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
@@ -2519,7 +2519,7 @@ async def approve_dishonest(update: telegram.Update, context: telegram.ext.Conte
         save_data(pending_dishonest_reports, 'pending_dishonest_reports.pkl')
         
         # Notify group
-        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pirkėjas!\n"
         if target_user_id:
             notification += f"🆔 User ID: {target_user_id}\n"
         notification += f"📝 Priežastis: {reason}\n"
@@ -2655,14 +2655,14 @@ async def approve_dishonest_callback(query, context, report_id, user_id):
         
         # Update the message to show it was approved
         await query.edit_message_text(
-            f"✅ PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+            f"✅ PATVIRTINTA: {username} yra nepatikimas pirkėjas!\n"
             f"📝 Priežastis: {reason}\n"
             f"👮 Pranešėjas: {reporter_username}\n"
             f"✅ Patvirtino: {query.from_user.username or 'Admin'}"
         )
         
         # Notify group
-        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pardavėjas!\n"
+        notification = f"🚨 PATVIRTINTA: {username} yra nepatikimas pirkėjas!\n"
         if target_user_id:
             notification += f"🆔 User ID: {target_user_id}\n"
         notification += f"📝 Priežastis: {reason}\n"
@@ -2721,11 +2721,11 @@ async def dishonest_list(update: telegram.Update, context: telegram.ext.ContextT
         return
     
     if not confirmed_dishonest:
-        msg = await update.message.reply_text("Nėra patvirtintų nepatikimų pardavėjų.")
+        msg = await update.message.reply_text("Nėra patvirtintų nepatikimų pirkėjų.")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    response = "🚨 PATVIRTINTI NEPATIKIMI PARDAVĖJAI 🚨\n\n"
+    response = "🚨 PATVIRTINTI NEPATIKIMI PIRKEJAI 🚨\n\n"
     
     for username, info in confirmed_dishonest.items():
         reports_count = info.get('reports_count', 0)
@@ -2741,7 +2741,7 @@ async def dishonest_list(update: telegram.Update, context: telegram.ext.ContextT
         response += f"⏰ Patvirtinta: {timestamp}\n"
         response += "─" * 30 + "\n\n"
     
-    response += f"📊 Iš viso: {len(confirmed_dishonest)} nepatikimų pardavėjų"
+    response += f"📊 Iš viso: {len(confirmed_dishonest)} nepatikimų pirkėjų"
     
     msg = await update.message.reply_text(response)
     context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
@@ -2757,11 +2757,11 @@ async def pending_dishonest_reports_list(update: telegram.Update, context: teleg
         return
     
     if not pending_dishonest_reports:
-        msg = await update.message.reply_text("Nėra laukiančių pranešimų apie nepatikimus pardavėjus.")
+        msg = await update.message.reply_text("Nėra laukiančių pranešimų apie nepatikimus pirkėjus.")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    response = "⏳ LAUKIANČI NEPATIKIMŲ PARDAVĖJŲ PRANEŠIMAI ⏳\n\n"
+    response = "⏳ LAUKIANČI NEPATIKIMŲ PIRKEJŲ PRANEŠIMAI ⏳\n\n"
     
     for report_id, report in pending_dishonest_reports.items():
         username = report['username']
@@ -3714,9 +3714,9 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 🚨 `/scameris @username ID įrodymai` - Pranešti scamerį su vartotojo ID
 🔍 `/patikra @username` - Patikrinti ar vartotojas scameris
 📋 `/scameriai` - Peržiūrėti visų patvirtintų scamerių sąrašą
-🚨 `/vagis @username priežastis` - Pranešti nepatikimą pardavėją (10/dieną)
+🚨 `/vagis @username priežastis` - Pranešti nepatikimą pirkėją (10/dieną)
 🚨 `/vagis @username ID priežastis` - Pranešti su vartotojo ID
-🔍 `/neradejas @username` - Patikrinti ar vartotojas nepatikimas pardavėjas
+🔍 `/neradejas @username` - Patikrinti ar vartotojas nepatikimas pirkėjas
 
 💰 TAŠKŲ SISTEMA
 💰 `/points` - Patikrinti savo taškus ir pokalbių seriją
@@ -3784,7 +3784,7 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 • Aktyvūs vartotojai šiandien: ~{len(daily_messages)}
 • Visų laikų žinučių: {sum(alltime_messages.values()):,}
 • Patvirtinti scameriai: {len(confirmed_scammers)}
-• Nepatikimi pardavėjai: {len(confirmed_dishonest)}
+• Nepatikimi pirkėjai: {len(confirmed_dishonest)}
 • Patikimi pardavėjai: {len(trusted_sellers)}
 
 💡 PRO PATARIMAI
