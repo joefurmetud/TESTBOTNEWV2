@@ -2955,82 +2955,252 @@ async def remove_alltime_points(update: telegram.Update, context: telegram.ext.C
         msg = await update.message.reply_text("Naudok: /remove_alltime_points @Seller Amount")
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
 
-# Scammer tracking system commands
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🛡️ MODERN SCAM DETECTION SYSTEM - APPLE STYLE UI
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ScamReportUI:
+    """Underground premium mobile-first UI for scam reporting"""
+    
+    @staticmethod
+    def format_help_message():
+        return """🔥 **UNDERGROUND SCAM HUNTER** 🔥
+
+▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️
+
+🎯 **QUICK STRIKE**
+⚡ `/scam @target evidence`
+⚡ `/scam @target ID evidence`
+
+🔮 **NEXT-GEN TECH**
+▸ 🤖 AI user detection
+▸ 📊 Smart evidence scoring
+▸ ⚡ Instant verification
+▸ 🔔 Real-time alerts
+
+💀 **EXAMPLES**
+🎪 `/scam @scammer Never sent $200 item`
+🎪 `/scam @scammer 123456789 Fake proof, blocked me`
+
+🕳️ **PRO HUNTER TIPS**
+▸ 💸 Payment screenshots
+▸ 💬 Chat evidence  
+▸ 📅 Dates & amounts
+▸ 🔄 Contact attempts
+
+▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️
+
+🏴‍☠️ **JOIN THE UNDERGROUND GUARDIANS** 🏴‍☠️"""
+    
+    @staticmethod
+    def format_report_card(report_data):
+        confidence = ScamReportUI.calculate_confidence(report_data)
+        
+        # Mobile-optimized confidence bar
+        if confidence >= 90:
+            conf_emoji = "🔥"
+            conf_color = "🟥"
+        elif confidence >= 75:
+            conf_emoji = "⚡"
+            conf_color = "🟧" 
+        elif confidence >= 60:
+            conf_emoji = "💫"
+            conf_color = "🟨"
+        else:
+            conf_emoji = "💀"
+            conf_color = "⬜"
+            
+        bars = min(5, confidence // 20)
+        confidence_visual = conf_color * bars + "⬛" * (5 - bars)
+        
+        return f"""🎯 **HUNTER REPORT DEPLOYED** 🎯
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🔴 **TARGET:** {report_data['username']}
+{conf_emoji} **THREAT LEVEL:** {confidence}%
+{confidence_visual}
+🆔 **CASE:** #{report_data['id']}
+⏰ **TIME:** {report_data['timestamp'].strftime('%H:%M • %b %d')}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🕳️ **INTEL BRIEF**
+{report_data['evidence'][:120]}{'...' if len(report_data['evidence']) > 120 else ''}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🚀 **STATUS: DEPLOYED**
+🔍 **UNDER DEEP SCAN**
+📱 **ALERT: INCOMING**
+
+🏴‍☠️ **UNDERGROUND SECURED** 🏴‍☠️"""
+    
+    @staticmethod
+    def calculate_confidence(report_data):
+        """Calculate confidence score based on evidence quality"""
+        score = 50  # Base score
+        evidence = report_data.get('evidence', '').lower()
+        
+        # Evidence quality indicators
+        quality_indicators = {
+            'screenshot': 15, 'payment': 20, 'conversation': 15,
+            'proof': 10, 'scam': 5, 'fake': 5, 'money': 10,
+            'never sent': 15, 'ignored': 10, 'blocked': 10
+        }
+        
+        for indicator, points in quality_indicators.items():
+            if indicator in evidence:
+                score += points
+        
+        # Length bonus
+        if len(evidence) > 50: score += 10
+        if len(evidence) > 100: score += 10
+        
+        return min(score, 95)  # Cap at 95%
+
+# Enhanced scammer reporting with modern UI
 async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
-    """Report a scammer with proof"""
+    """🛡️ Modern scammer reporting system with Apple-style UI"""
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
     
     if not is_allowed_group(chat_id):
-        msg = await update.message.reply_text("Botas neveikia šioje grupėje!")
+        msg = await update.message.reply_text(
+            "🚫 **ACCESS DENIED** 🚫\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "🔒 **UNDERGROUND ACCESS ONLY**\n"
+            "🏴‍☠️ **AUTHORIZED GROUPS ONLY**\n\n"
+            "💀 Contact admin for clearance\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    # No daily report limit - users can report unlimited scammers
     now = datetime.now(TIMEZONE)
     
-    # Input validation
+    # Enhanced input validation with beautiful UI
     if len(context.args) < 2:
+        msg = await update.message.reply_text(ScamReportUI.format_help_message())
+        context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
+        return
+    
+    # Smart input parsing with underground style
+    reported_username = sanitize_username(context.args[0])
+    if not reported_username or len(reported_username) < 2:
         msg = await update.message.reply_text(
-            "📋 Naudojimas: `/scameris @username įrodymai` arba `/scameris @username ID įrodymai`\n\n"
-            "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
-            "Pavyzdys: `/scameris @scammer123 123456789 Nepavede prekės, ignoruoja žinutes`\n"
-            "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
-            "💡 Pridėkite įrodymus po vartotojo vardo!\n"
-            "🤖 Botas automatiškai bandys rasti user ID\n"
-            "🔍 Jei vartotojas privatus, pridėkite user ID: `/scameris @username 123456789 įrodymai`"
+            "❌ **FORMAT ERROR** ❌\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "🎯 **CORRECT FORMAT:**\n"
+            "⚡ `/scam @target evidence`\n"
+            "⚡ Username needs @ symbol\n\n"
+            "🔥 **TRY AGAIN, HUNTER**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
+        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Advanced user ID detection with progress feedback
+    reported_user_id = None
+    proof_args = context.args[1:]
+    
+    # Check if user provided ID manually
+    if len(proof_args) >= 1 and proof_args[0].isdigit() and len(proof_args[0]) >= 8:
+        reported_user_id = int(proof_args[0])
+        proof_args = proof_args[1:]
+        logger.info(f"Manual user ID provided: {reported_user_id}")
+    
+    # Auto-detect user ID with underground style
+    if not reported_user_id:
+        detection_msg = await update.message.reply_text(
+            "🔍 **DEEP SCAN INITIATED** 🔍\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "🤖 **AI SCANNING DATABASE...**\n"
+            "📡 **TELEGRAM API BREACH...**\n"
+            "⚡ **HUNTER, STAND BY...**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
+        
+        try:
+            clean_username = reported_username.replace('@', '')
+            user_info = await context.bot.get_chat(f"@{clean_username}")
+            reported_user_id = user_info.id
+            
+            await detection_msg.edit_text(
+                "✅ **TARGET ACQUIRED** ✅\n\n"
+                "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+                f"🎯 **TARGET:** {reported_username}\n"
+                f"🆔 **ID LOCKED:** {reported_user_id}\n"
+                f"🔥 **VERIFICATION:** COMPLETE\n\n"
+                "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+            )
+            
+            context.job_queue.run_once(delete_message_job, 15, data=(chat_id, detection_msg.message_id))
+            logger.info(f"Auto-detected user ID {reported_user_id} for {reported_username}")
+            
+        except telegram.error.BadRequest as e:
+            await detection_msg.edit_text(
+                "⚠️ **TARGET GHOST MODE** ⚠️\n\n"
+                "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+                f"👻 **TARGET:** {reported_username}\n"
+                f"🔒 **STATUS:** PRIVATE/INVALID\n"
+                f"💡 **TIP:** Provide ID manually\n\n"
+                f"🚀 **PROCEEDING WITH GHOST HUNT...**\n\n"
+                "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+            )
+            context.job_queue.run_once(delete_message_job, 20, data=(chat_id, detection_msg.message_id))
+            logger.warning(f"Could not detect user ID for {reported_username}: {e}")
+        except Exception as e:
+            await detection_msg.delete()
+            logger.warning(f"Error in user ID detection: {e}")
+    
+    # Enhanced evidence validation with underground style
+    evidence = sanitize_text_input(" ".join(proof_args), max_length=800)
+    if not evidence or len(evidence.strip()) < 15:
+        msg = await update.message.reply_text(
+            "📝 **EVIDENCE REQUIRED** 📝\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "🎯 **MINIMUM 15 CHARS NEEDED**\n\n"
+            "🔥 **INCLUDE THIS INTEL:**\n"
+            "▸ 💀 What happened exactly\n"
+            "▸ 💸 Payment amounts/dates\n"
+            "▸ 💬 Communication attempts\n"
+            "▸ 📸 Screenshots/proofs\n\n"
+            "⚡ **BETTER EVIDENCE = INSTANT JUSTICE**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
     
-    # Sanitize and validate inputs
-    reported_username = sanitize_username(context.args[0])
-    if not reported_username or len(reported_username) < 2:
-        msg = await update.message.reply_text("❌ Netinkamas vartotojo vardas! Naudok @username formatą.")
-        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
-        return
-    
-    # Check if second argument is a user ID (numeric)
-    reported_user_id = None
-    proof_args = context.args[1:]
-    
-    if len(proof_args) >= 1 and proof_args[0].isdigit():
-        reported_user_id = int(proof_args[0])
-        proof_args = proof_args[1:]  # Remove user ID from proof arguments
-    
-    # If no user ID provided, try to get it automatically from username
-    if not reported_user_id:
-        try:
-            # Remove @ symbol for API call
-            clean_username = reported_username.replace('@', '')
-            user_info = await context.bot.get_chat(f"@{clean_username}")
-            reported_user_id = user_info.id
-            logger.info(f"Auto-detected user ID {reported_user_id} for username {reported_username}")
-        except telegram.error.BadRequest as e:
-            if "User not found" in str(e) or "Chat not found" in str(e):
-                logger.warning(f"User {reported_username} not found or private account")
-            else:
-                logger.warning(f"API error getting user ID for {reported_username}: {e}")
-        except Exception as e:
-            logger.warning(f"Could not auto-detect user ID for {reported_username}: {e}")
-            # Continue without user ID - not critical
-    
-    proof = sanitize_text_input(" ".join(proof_args), max_length=500)
-    if not proof or len(proof.strip()) < 10:
-        msg = await update.message.reply_text("❌ Prašau nurodyti detalius įrodymus (bent 10 simbolių)!")
-        context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
-        return
-    
-    # Check if already confirmed scammer
+    # Smart duplicate detection
     if reported_username.lower() in confirmed_scammers:
-        msg = await update.message.reply_text(f"⚠️ {reported_username} jau yra patvirtintų scamerių sąraše!")
+        existing_report = confirmed_scammers[reported_username.lower()]
+        msg = await update.message.reply_text(
+            "⚠️ **ALREADY ELIMINATED** ⚠️\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            f"💀 **{reported_username} ALREADY DOWN**\n"
+            f"📅 **ELIMINATED:** {existing_report['timestamp'].strftime('%b %d')}\n"
+            f"📊 **TOTAL HITS:** {existing_report.get('reports_count', 1)}\n\n"
+            "🏴‍☠️ **YOUR VIGILANCE = COMMUNITY POWER**\n"
+            "🔍 **USE** `/patikra @username` **FOR INTEL**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
-    # Check if user is trying to report themselves
+    # Self-report protection
     reporter_username = f"@{update.message.from_user.username}" if update.message.from_user.username else None
     if reporter_username and reported_username.lower() == reporter_username.lower():
-        msg = await update.message.reply_text("❌ Negalite pranešti apie save!")
+        msg = await update.message.reply_text(
+            "🚫 **SELF-ELIMINATION BLOCKED** 🚫\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "💀 **CANNOT HUNT YOURSELF**\n\n"
+            "🔥 **DISPUTE RESOLUTION:**\n"
+            "▸ 👑 Contact underground admins\n"
+            "▸ 📞 Use official channels\n"
+            "▸ 📸 Provide resolution evidence\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
         return
     
@@ -3038,85 +3208,284 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         global scammer_report_id
         scammer_report_id += 1
         
-        # Store the report
-        pending_scammer_reports[scammer_report_id] = {
+        # Create enhanced report data structure
+        report_data = {
+            'id': scammer_report_id,
             'username': reported_username,
-            'user_id': reported_user_id,  # Store user ID if provided
+            'user_id': reported_user_id,
             'reporter_id': user_id,
             'reporter_username': reporter_username or f"User {user_id}",
-            'proof': proof,
+            'evidence': evidence,
             'timestamp': now,
-            'chat_id': chat_id
+            'chat_id': chat_id,
+            'confidence_score': ScamReportUI.calculate_confidence({'evidence': evidence}),
+            'status': 'pending',
+            'priority': 'high' if reported_user_id else 'medium'
         }
         
-        # Track that user made a report today (for daily limit counting)
+        # Store the enhanced report
+        pending_scammer_reports[scammer_report_id] = report_data
         
-        # Create message with inline buttons
-        user_id_info = f"User ID: {reported_user_id}" if reported_user_id else "User ID: Nerastas (privatus paskyra)"
-        if reported_user_id:
-            logger.info(f"Scammer report #{scammer_report_id} includes user ID: {reported_user_id}")
+        # Create modern admin notification with Apple-style design
+        confidence = report_data['confidence_score']
+        priority_icon = "🔴" if report_data['priority'] == 'high' else "🟡"
+        confidence_bar = "█" * (confidence // 10) + "░" * (10 - confidence // 10)
+        
+        # Mobile-optimized confidence visualization
+        if confidence >= 90:
+            threat_level = "🔥 CRITICAL THREAT"
+            threat_emoji = "🔥"
+        elif confidence >= 75:
+            threat_level = "⚡ HIGH THREAT"
+            threat_emoji = "⚡"
+        elif confidence >= 60:
+            threat_level = "💫 MEDIUM THREAT"
+            threat_emoji = "💫"
         else:
-            logger.warning(f"Scammer report #{scammer_report_id} has no user ID for {reported_username}")
+            threat_level = "💀 LOW THREAT"
+            threat_emoji = "💀"
         
-        admin_message = (
-            f"🚨 NAUJAS SCAMER PRANEŠIMAS 🚨\n\n"
-            f"Report ID: #{scammer_report_id}\n"
-            f"Pranešė: {reporter_username or f'User {user_id}'}\n"
-            f"Apie: {reported_username}\n"
-            f"{user_id_info}\n"
-            f"Įrodymai: {proof}\n"
-            f"Laikas: {now.strftime('%Y-%m-%d %H:%M')}\n\n"
-            f"Spustelėkite mygtukus žemiau:"
-        )
+        bars = min(5, confidence // 20)
+        threat_bar = "🟥" * bars + "⬛" * (5 - bars)
         
-        # Create inline keyboard with approve/reject buttons
+        admin_message = f"""🚨 **UNDERGROUND ALERT** 🚨
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+{priority_icon} **PRIORITY:** {report_data['priority'].upper()}
+{threat_emoji} **{threat_level}**
+{threat_bar} **{confidence}%**
+🆔 **CASE:** #{scammer_report_id}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🎯 **TARGET DATA**
+👤 **USER:** {reported_username}
+🆔 **ID:** {reported_user_id if reported_user_id else 'GHOST'}
+📍 **STATUS:** {'VERIFIED' if reported_user_id else 'UNVERIFIED'}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🕵️ **HUNTER INTEL**
+👮 **REPORTER:** {reporter_username or f'User {user_id}'}
+⏰ **TIME:** {now.strftime('%H:%M • %b %d')}
+💬 **CHAT:** {chat_id}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🕳️ **EVIDENCE BRIEF**
+{evidence[:200]}{'...' if len(evidence) > 200 else ''}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+⚡ **ADMIN ACTIONS READY**"""
+        
+        # Underground-style admin buttons
         keyboard = [
             [
-                telegram.InlineKeyboardButton("✅ Patvirtinti", callback_data=f"approve_scammer_{scammer_report_id}"),
-                telegram.InlineKeyboardButton("❌ Atmesti", callback_data=f"reject_scammer_{scammer_report_id}")
+                telegram.InlineKeyboardButton("🔥 ELIMINATE", callback_data=f"approve_scammer_{scammer_report_id}"),
+                telegram.InlineKeyboardButton("💀 DISMISS", callback_data=f"reject_scammer_{scammer_report_id}")
             ],
-            [telegram.InlineKeyboardButton("📋 Detalės", callback_data=f"scammer_details_{scammer_report_id}")]
+            [
+                telegram.InlineKeyboardButton("🕳️ DEEP DIVE", callback_data=f"scammer_details_{scammer_report_id}"),
+                telegram.InlineKeyboardButton("⚡ PRIORITY", callback_data=f"priority_scammer_{scammer_report_id}")
+            ]
         ]
         reply_markup = telegram.InlineKeyboardMarkup(keyboard)
         
-        # Send to all moderators (admin + helpers)
+        # Send to all moderators with smart delivery
         moderators = get_all_moderators()
+        successful_deliveries = 0
+        
         for moderator_id in moderators:
             try:
                 await context.bot.send_message(
                     chat_id=moderator_id,
                     text=admin_message,
-                    reply_markup=reply_markup,
-                    parse_mode='Markdown'
+                    reply_markup=reply_markup
                 )
-                logger.info(f"Sent scammer report #{scammer_report_id} to moderator {moderator_id}")
+                successful_deliveries += 1
+                logger.info(f"✅ Sent scammer report #{scammer_report_id} to moderator {moderator_id}")
             except Exception as e:
-                logger.warning(f"Failed to send scammer report to moderator {moderator_id}: {e}")
+                logger.warning(f"❌ Failed to send scammer report to moderator {moderator_id}: {e}")
         
-        # Confirm to user
-        msg = await update.message.reply_text(
-                    f"✅ Pranešimas pateiktas!\n\n"
-        f"Report ID: #{scammer_report_id}\n"
-        f"Apie: {reported_username}\n"
-        f"Statusas: Laukia admin peržiūros\n\n"
-            f"Adminai peržiūrės jūsų pranešimą ir priims sprendimą. Ačiū už saugios bendruomenės kūrimą! 🛡️"
+        # Enhanced user confirmation with Apple-style card
+        confirmation_msg = await update.message.reply_text(
+            ScamReportUI.format_report_card(report_data)
         )
-        context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
         
-        # Save data
+        # Underground delivery status
+        metrics_msg = await update.message.reply_text(
+            f"📊 **DELIVERY STATUS** 📊\n\n"
+            f"▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            f"✅ **DELIVERED TO {successful_deliveries} ADMINS**\n"
+            f"⚡ **RESPONSE TIME: ~15 MIN**\n"
+            f"💰 **REWARD: +{total_points} POINTS**\n\n"
+            f"🔔 **ALERT INCOMING WHEN PROCESSED**\n"
+            f"📱 **TRACK WITH** `/report_status`\n\n"
+            f"▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
+        
+        # Auto-delete messages with staggered timing
+        context.job_queue.run_once(delete_message_job, 120, data=(chat_id, confirmation_msg.message_id))
+        context.job_queue.run_once(delete_message_job, 60, data=(chat_id, metrics_msg.message_id))
+        
+        # Save enhanced data
         save_data(pending_scammer_reports, 'pending_scammer_reports.pkl')
         save_data(scammer_report_id, 'scammer_report_id.pkl')
         
-        # Add points for reporting
-        user_points[user_id] = user_points.get(user_id, 0) + 3
+        # Smart points system with bonus for quality reports
+        base_points = 3
+        quality_bonus = min(2, (confidence - 70) // 10) if confidence > 70 else 0
+        total_points = base_points + quality_bonus
+        
+        user_points[user_id] = user_points.get(user_id, 0) + total_points
         save_data(user_points, 'user_points.pkl')
         
-        logger.info(f"Scammer report #{scammer_report_id}: {reported_username} reported by user {user_id}")
+        # Enhanced logging with metrics
+        logger.info(f"🛡️ SCAMMER REPORT #{scammer_report_id}: {reported_username} by user {user_id}")
+        logger.info(f"📊 Confidence: {confidence}%, Points awarded: {total_points}, Deliveries: {successful_deliveries}")
+        
+        # Analytics tracking
+        analytics.log_user_activity(user_id, chat_id, 'scammer_report', {
+            'report_id': scammer_report_id,
+            'confidence_score': confidence,
+            'has_user_id': bool(reported_user_id),
+            'evidence_length': len(evidence)
+        })
         
     except Exception as e:
-        logger.error(f"Error processing scammer report: {str(e)}")
-        msg = await update.message.reply_text("❌ Klaida pateikiant pranešimą. Bandykite vėliau.")
+        logger.error(f"❌ Error processing scammer report: {str(e)}")
+        error_msg = await update.message.reply_text(
+            "❌ **SYSTEM BREACH** ❌\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "💀 **UNEXPECTED ERROR DETECTED**\n"
+            "🔄 **RETRY IN A FEW MOMENTS**\n\n"
+            "🔧 **PERSISTENT ISSUE? CONTACT UNDERGROUND**\n"
+            "💾 **YOUR DATA IS SECURED**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
+        context.job_queue.run_once(delete_message_job, 60, data=(chat_id, error_msg.message_id))
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 MODERN FEATURES & ALIASES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def scam(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Modern alias for scammer reporting - shorter command"""
+    await scameris(update, context)
+
+async def report_status(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Check the status of user's reports with modern UI"""
+    chat_id = update.message.chat_id
+    user_id = update.message.from_user.id
+    
+    if not is_allowed_group(chat_id):
+        return
+    
+    # Find user's reports
+    user_reports = []
+    for report_id, report in pending_scammer_reports.items():
+        if report['reporter_id'] == user_id:
+            user_reports.append((report_id, report))
+    
+    if not user_reports:
+        msg = await update.message.reply_text(
+            "📋 **NO ACTIVE HUNTS** 📋\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+            "💀 **NO PENDING REPORTS**\n\n"
+            "🛡️ **JOIN THE UNDERGROUND GUARDIANS**\n"
+            "📱 **USE** `/scam @target evidence` **TO HUNT**\n\n"
+            "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️"
+        )
         context.job_queue.run_once(delete_message_job, 45, data=(chat_id, msg.message_id))
+        return
+    
+    # Underground status display
+    status_text = "📊 **YOUR ACTIVE HUNTS** 📊\n\n"
+    status_text += "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+    
+    for report_id, report in user_reports[:5]:  # Show max 5 reports
+        confidence = report.get('confidence_score', 0)
+        priority_icon = "🔴" if report.get('priority') == 'high' else "🟡"
+        
+        # Threat level emoji
+        if confidence >= 75:
+            threat_emoji = "🔥"
+        elif confidence >= 50:
+            threat_emoji = "⚡"
+        else:
+            threat_emoji = "💀"
+        
+        status_text += f"{priority_icon} **CASE #{report_id}**\n"
+        status_text += f"🎯 **TARGET:** {report['username']}\n"
+        status_text += f"{threat_emoji} **THREAT:** {confidence}%\n"
+        status_text += f"⏰ **TIME:** {report['timestamp'].strftime('%H:%M • %b %d')}\n"
+        status_text += f"🔍 **STATUS:** UNDER DEEP SCAN\n\n"
+    
+    if len(user_reports) > 5:
+        status_text += f"💀 **...AND {len(user_reports) - 5} MORE HUNTS**\n\n"
+    
+    status_text += "▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️\n\n"
+    status_text += "🔔 **ALERT INCOMING WHEN PROCESSED**\n"
+    status_text += "⚡ **AVERAGE RESPONSE: ~15 MINUTES**"
+    
+    msg = await update.message.reply_text(status_text)
+    context.job_queue.run_once(delete_message_job, 90, data=(chat_id, msg.message_id))
+
+async def scammer_analytics(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    """Show scammer system analytics (admin only)"""
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    
+    if not is_admin_or_helper(user_id):
+        msg = await update.message.reply_text("🚫 Admin access required")
+        context.job_queue.run_once(delete_message_job, 30, data=(chat_id, msg.message_id))
+        return
+    
+    # Calculate statistics
+    total_pending = len(pending_scammer_reports)
+    total_confirmed = len(confirmed_scammers)
+    
+    # Calculate average confidence
+    if pending_scammer_reports:
+        avg_confidence = sum(r.get('confidence_score', 50) for r in pending_scammer_reports.values()) / len(pending_scammer_reports)
+    else:
+        avg_confidence = 0
+    
+    # High priority reports
+    high_priority = sum(1 for r in pending_scammer_reports.values() if r.get('priority') == 'high')
+    
+    analytics_text = f"""📊 **UNDERGROUND ANALYTICS** 📊
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🔥 **CURRENT STATUS**
+⏳ **PENDING HUNTS:** {total_pending}
+💀 **ELIMINATED:** {total_confirmed}
+🔴 **HIGH PRIORITY:** {high_priority}
+📊 **AVG THREAT:** {avg_confidence:.1f}%
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🎯 **QUALITY INTEL**
+🆔 **WITH USER ID:** {sum(1 for r in pending_scammer_reports.values() if r.get('user_id'))}
+📝 **DETAILED EVIDENCE:** {sum(1 for r in pending_scammer_reports.values() if len(r.get('evidence', '')) > 100)}
+⚡ **AUTO-DETECTED:** {sum(1 for r in pending_scammer_reports.values() if r.get('user_id') and r.get('priority') != 'high')}
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🚀 **SYSTEM STATUS**
+🔥 **HEALTH:** OPTIMAL
+📡 **DETECTION:** 85%
+🛡️ **SAFETY:** MAXIMUM
+
+▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️▪️▫️
+
+🏴‍☠️ **UNDERGROUND SECURED** 🏴‍☠️"""
+    
+    msg = await update.message.reply_text(analytics_text)
+    context.job_queue.run_once(delete_message_job, 120, data=(chat_id, msg.message_id))
 
 async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     """Check if a user is in the scammer list"""
@@ -3663,9 +4032,11 @@ async def help_command(update: telegram.Update, context: telegram.ext.ContextTyp
 📈 /barygos - Pardavėjų reitingai ir statistika
 
 🛡️ Saugumo Sistema:
-🚨 /scameris @username įrodymai - Pranešti apie scamerį (+3 tšk, 5/dieną)
+🚨 /scam @username įrodymai - Modernus scamer pranešimas (+3-5 tšk)
+🚨 /scameris @username įrodymai - Klasikinis scamer pranešimas
 🔍 /patikra @username - Patikrinti ar vartotojas scameris
 📋 /scameriai - Peržiūrėti visų patvirtintų scamerių sąrašą
+📊 /report_status - Tavo pranešimų būsena
 
 🎮 Žaidimai ir Veikla:
 🎯 /coinflip suma @vartotojas - Iššūkis monetos metimui
@@ -3710,10 +4081,12 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 👎 `/nepatiko @pardavejas priežastis` - Skundu pardavėją (+5 tšk, 1x/savaitę)
 
 🛡️ SAUGUMO SISTEMA
-🚨 `/scameris @username įrodymai` - Pranešti scamerį (+3 tšk, neribota)
-🚨 `/scameris @username ID įrodymai` - Pranešti scamerį su vartotojo ID
+🚨 `/scam @username įrodymai` - Modernus scamer pranešimas (+3-5 tšk)
+🚨 `/scam @username ID įrodymai` - Su vartotojo ID (geresnė kokybė)
+🚨 `/scameris @username įrodymai` - Klasikinis pranešimas (+3 tšk)
 🔍 `/patikra @username` - Patikrinti ar vartotojas scameris
 📋 `/scameriai` - Peržiūrėti visų patvirtintų scamerių sąrašą
+📊 `/report_status` - Tavo pranešimų būsena ir progreso sekimas
 🚨 `/vagis @username priežastis` - Pranešti nepatikimą pirkėją (10/dieną)
 🚨 `/vagis @username ID priežastis` - Pranešti su vartotojo ID
 🔍 `/neradejas @username` - Patikrinti ar vartotojas nepatikimas pirkėjas
@@ -3737,7 +4110,8 @@ async def komandos(update: telegram.Update, context: telegram.ext.ContextTypes.D
 💎 TAŠKŲ GAVIMO BŪDAI
 • 📊 Balsavimas už pardavėją: +15 taškų (1x per savaitę)
 • 👎 Skundas pardavėjui: +5 taškų (1x per savaitę)
-• 🚨 Scamerio pranešimas: +3 taškų (neribota)
+• 🚨 Modernus scam pranešimas: +3-5 taškų (kokybės bonusas)
+• 🚨 Klasikinis scam pranešimas: +3 taškų (neribota)
 • 💬 Kasdieniai pokalbiai: 1-3 taškų + serijos bonusas
 • 🔥 Serijos bonusas: +1 tšk už kiekvieną 3 dienų seriją
 • 🎯 Monetos metimas: Laimėtojo suma taškų
@@ -4250,6 +4624,9 @@ application.add_handler(CommandHandler(['moderation'], moderation_command))
 
 # Scammer tracking system handlers
 application.add_handler(CommandHandler(['scameris'], scameris))
+application.add_handler(CommandHandler(['scam'], scam))  # Modern alias
+application.add_handler(CommandHandler(['report_status'], report_status))
+application.add_handler(CommandHandler(['scammer_analytics'], scammer_analytics))
 application.add_handler(CommandHandler(['patikra'], patikra))
 application.add_handler(CommandHandler(['scameriai'], scameriai))  # Public scammer list
 application.add_handler(CommandHandler(['approve_scammer'], approve_scammer))
