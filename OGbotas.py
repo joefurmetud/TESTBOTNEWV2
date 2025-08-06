@@ -2424,7 +2424,8 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
             "Pavyzdys: `/scameris @scammer123 Nepavede prekės, ignoruoja žinutes`\n"
             "Reikia: Detalūs įrodymai kodėl šis žmogus yra scameris\n\n"
             "💡 Pridėkite įrodymus po vartotojo vardo!\n"
-            "🤖 Botas automatiškai bandys rasti user ID"
+            "🤖 Botas automatiškai bandys rasti user ID\n"
+            "🔍 Jei vartotojas privatus, pridėkite user ID: `/scameris @username 123456789 įrodymai`"
         )
         context.job_queue.run_once(delete_message_job, 60, data=(chat_id, msg.message_id))
         return
@@ -2498,7 +2499,7 @@ async def scameris(update: telegram.Update, context: telegram.ext.ContextTypes.D
         # Track that user made a report today (for daily limit counting)
         
         # Create message with inline buttons
-        user_id_info = f"User ID: {reported_user_id}" if reported_user_id else "User ID: Nerastas"
+        user_id_info = f"User ID: {reported_user_id}" if reported_user_id else "User ID: Nerastas (privatus paskyra)"
         if reported_user_id:
             logger.info(f"Scammer report #{scammer_report_id} includes user ID: {reported_user_id}")
         else:
@@ -2602,7 +2603,7 @@ async def patikra(update: telegram.Update, context: telegram.ext.ContextTypes.DE
         scammer_info = confirmed_scammers[check_username.lower()]
         confirmed_date = scammer_info['timestamp'].strftime('%Y-%m-%d')
         reports_count = scammer_info.get('reports_count', 1)
-        user_id_info = f"User ID: {scammer_info.get('user_id', 'Nenurodyta')}"
+        user_id_info = f"User ID: {scammer_info.get('user_id')}" if scammer_info.get('user_id') else "User ID: Nerastas (privatus paskyra)"
         
         msg = await update.message.reply_text(
                     f"🚨 SCAMER RASTAS! 🚨\n\n"
